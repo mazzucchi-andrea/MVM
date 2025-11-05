@@ -24,6 +24,7 @@ void *tls_setup() {
     size = 64;
 #endif
     addr = (unsigned long)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+    memset((void *)addr, 0, size);
     *(unsigned long *)addr = addr;
     if (arch_prctl(ARCH_SET_GS, addr)) {
         return NULL;

@@ -46,12 +46,10 @@ the_patch_assembly:
 // CKPT ASM CODE
 ckpt_assembly:
 #if MOD == 64
-	lea -0x1000(%rsp),%rsp //this is for the stack red zone
-	pushf
-        mov %rax,%rcx
+        mov %rax, %rcx
         and $0xffffffffffc00000, %rcx
         and $0x3fffff, %rax
-        test $7,%rax
+        test $7,%al
         jz second_qword
         and $0x7ffff8,%rax
         shr $3, %rax
@@ -71,7 +69,7 @@ next_qword:
 check_last:
         lea 8(,%rax, 8), %rax
         cmp $ALLOCATOR_AREA_SIZE, %rax
-        jge end_checkpoint
+        je end_checkpoint
 second_qword:
         shr $3, %rax
         mov %rax, %rbx
@@ -84,19 +82,17 @@ second_qword:
         mov (%rcx, %rax, 8), %rbx
         mov %rbx, ALLOCATOR_AREA_SIZE(%rcx, %rax, 8)
 end_checkpoint:
+        mov %gs:24, %ah
+        sahf
         mov %gs:0, %rax
         mov %gs:8, %rbx
         mov %gs:16, %rcx
-	popf
-	lea 0x1000(%rsp),%rsp
 
 #elif MOD == 128
-	lea -0x1000(%rsp),%rsp //this is for the stack red zone
-	pushf
-        mov %rax,%rcx
+        mov %rax, %rcx
         and $0xffffffffffc00000, %rcx
         and $0x3fffff, %rax
-        test $15,%rax
+        test $15,%ax
         jz second_dqword
         and $0x7ffff0, %rax
         shr $4, %rax
@@ -116,9 +112,9 @@ next_dqword:
         add %rbx, %rax
         shl $4, %rax
 check_last:
+        cmp $(ALLOCATOR_AREA_SIZE - 16), %rax
+        je end_checkpoint
         add $16, %rax
-        cmp $ALLOCATOR_AREA_SIZE, %rax
-        jge end_checkpoint
 second_dqword:
         shr $4, %rax
         mov %rax, %rbx
@@ -132,20 +128,18 @@ second_dqword:
         movdqu (%rcx, %rax,), %xmm1
         movdqu %xmm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
 end_checkpoint:
+        mov %gs:40, %ah
+        sahf
         mov %gs:0, %rax
         mov %gs:8, %rbx
         mov %gs:16, %rcx
         movdqu %gs:24, %xmm1
-	popf
-	lea 0x1000(%rsp),%rsp
 
 #elif MOD == 256
-	lea -0x1000(%rsp),%rsp //this is for the stack red zone
-	pushf
-        mov %rax,%rcx
+        mov %rax, %rcx
         and $0xffffffffffc00000, %rcx
         and $0x3fffff, %rax
-        test $31,%rax
+        test $31,%al
         jz second_256bit
         and $0x7fffe0,%rax
         shr $5, %rax
@@ -165,9 +159,9 @@ next_256bit:
         add %rbx, %rax
         shl $5, %rax
 check_last:
+        cmp $(ALLOCATOR_AREA_SIZE - 32), %rax
+        je end_checkpoint
         add $32, %rax
-        cmp $ALLOCATOR_AREA_SIZE, %rax
-        jge end_checkpoint
 second_256bit:
         shr $5, %rax
         mov %rax, %rbx
@@ -181,20 +175,18 @@ second_256bit:
         vmovdqu (%rcx, %rax,), %ymm1
         vmovdqu %ymm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
 end_checkpoint:
+        mov %gs:56, %ah
+        sahf
         mov %gs:0, %rax
         mov %gs:8, %rbx
         mov %gs:16, %rcx
         vmovdqu %gs:24, %ymm1
-	popf
-	lea 0x1000(%rsp),%rsp
 
 #else
-	lea -0x1000(%rsp),%rsp //this is for the stack red zone
-	pushf
-        mov %rax,%rcx
+	mov %rax, %rcx
         and $0xffffffffffc00000, %rcx
         and $0x3fffff, %rax
-        test $63,%rax
+        test $63, %al
         jz second_512bit
         and $0x7fffc0, %rax
         shr $6, %rax
@@ -214,9 +206,9 @@ next_512bit:
         add %rbx, %rax
         shl $6, %rax
 check_last:
+        cmp $(ALLOCATOR_AREA_SIZE - 64), %rax
+        je end_checkpoint
         add $64, %rax
-        cmp $ALLOCATOR_AREA_SIZE, %rax
-        jge end_checkpoint
 second_512bit:
         shr $6, %rax
         mov %rax, %rbx
@@ -230,10 +222,10 @@ second_512bit:
         vmovdqu64 (%rcx, %rax,), %zmm1
         vmovdqu64 %zmm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
 end_checkpoint:
+        mov %gs:88, %ah
+        sahf
         mov %gs:0, %rax
         mov %gs:8, %rbx
         mov %gs:16, %rcx
         vmovdqu64 %gs:24, %zmm1
-	popf
-	lea 0x1000(%rsp),%rsp
 #endif

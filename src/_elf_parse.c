@@ -116,13 +116,13 @@ void build_patches(void) {
 #if CKPT
     uint64_t ckpt_code = (uint64_t)ckpt_assembly;
 #if MOD == 64
-    int ckpt_code_size = 0xbe; // this is taken from the compiled version of the src/_asm_patch.S file
+    int ckpt_code_size = 0xb1; // this is taken from the compiled version of the src/_asm_patch.S file
 #elif MOD == 128
-    int ckpt_code_size = 0xd4;
+    int ckpt_code_size = 0xc9;
 #elif MOD == 256
-    int ckpt_code_size = 0xd4;
+    int ckpt_code_size = 0xc7;
 #else
-    int ckpt_code_size = 0xde;
+    int ckpt_code_size = 0xd1;
 #endif
 #endif
 
@@ -182,17 +182,17 @@ void build_patches(void) {
 
 #ifdef CKPT
 #if MOD == 64
-        memset((char *)(patches[i].code), 0x90, 37 + ckpt_code_size);
+        memset((char *)(patches[i].code), 0x90, 46 + ckpt_code_size);
         save_regs_tls(&patches[i]);
-        patches[i].code = patches[i].code + 27; // 27 is the size of the instructions to save the regs in gs
+        patches[i].code = patches[i].code + 36; // 36 is the size of the instructions to save the regs in gs
 #elif MOD == 128 || MOD == 256
-        memset((char *)(patches[i].code), 0x90, 47 + ckpt_code_size);
+        memset((char *)(patches[i].code), 0x90, 56 + ckpt_code_size);
         save_regs_tls(&patches[i]);
-        patches[i].code = patches[i].code + 37; // 37 is the size of the instructions to save the regs in gs
+        patches[i].code = patches[i].code + 46; // 37 is the size of the instructions to save the regs in gs
 #else
-        memset((char *)(patches[i].code), 0x90, 49 + ckpt_code_size);
+        memset((char *)(patches[i].code), 0x90, 58 + ckpt_code_size);
         save_regs_tls(&patches[i]);
-        patches[i].code = patches[i].code + 39;
+        patches[i].code = patches[i].code + 48;
 #endif
         ckpt_patch(&instructions[i], &patches[i]);
         patches[i].code = patches[i].code + 10; // 10 is the mazimum size of the lea instruction
@@ -208,11 +208,11 @@ void build_patches(void) {
         // NOTE: you will need to have patches[i].code point again to patches[i].block before proceeding with the
         // following if/else
 #if MOD == 64
-        patches[i].code = patches[i].code - 37 - ckpt_code_size;
+        patches[i].code = patches[i].code - 46 - ckpt_code_size;
 #elif MOD == 128 || MOD == 256
-        patches[i].code = patches[i].code - 47 - ckpt_code_size;
+        patches[i].code = patches[i].code - 56 - ckpt_code_size;
 #else
-        patches[i].code = patches[i].code - 49 - ckpt_code_size;
+        patches[i].code = patches[i].code - 58 - ckpt_code_size;
 #endif
 #endif
 
@@ -291,11 +291,11 @@ void build_patches(void) {
         // NOTE: for the below code fragment you will need to have patches[i].code point to the copy of the original
         // instruction - you will need to step forward other preceeding instructions forming the patch
 #if MOD == 64
-        patches[i].code = patches[i].code + 37 + ckpt_code_size;
+        patches[i].code = patches[i].code + 46 + ckpt_code_size;
 #elif MOD == 128 || MOD == 256
-        patches[i].code = patches[i].code + 47 + ckpt_code_size;
+        patches[i].code = patches[i].code + 56 + ckpt_code_size;
 #else
-        patches[i].code = patches[i].code + 49 + ckpt_code_size;
+        patches[i].code = patches[i].code + 58 + ckpt_code_size;
 #endif
 #endif
 
