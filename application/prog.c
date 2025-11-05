@@ -6,6 +6,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,19 +46,21 @@ void init_area(int8_t *area, int64_t init_value) {
 /* Save original values and set the bitarray bit before writing the new value
  * and read */
 void test_checkpoint_not_aligned(int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
-    int offset;
+    int offset = 0;
     int64_t read_value;
     clock_t begin, end;
     double time_spent;
 
     begin = clock();
-    for (int i = 0; i < numberOfWrites; i += 4) {
-        offset = i % (ALLOCATOR_AREA_SIZE - 8 + 1);
+    for (int i = 0; i < numberOfWrites; i++) {
+        offset %= (ALLOCATOR_AREA_SIZE - 8 + 1);
         *(int64_t *)(area + offset) = new_value;
+        offset += 4;
     }
     for (int i = 0; i < numberOfReads; i++) {
-        offset = i % (ALLOCATOR_AREA_SIZE - 8 + 1);
+        offset %= (ALLOCATOR_AREA_SIZE - 8 + 1);
         read_value = *(int64_t *)(area + offset);
+        offset += 4;
     }
     end = clock();
 
@@ -72,20 +75,29 @@ void test_checkpoint_aligned(int8_t *area, int64_t new_value, int numberOfWrites
     double time_spent;
 
     begin = clock();
+    for (int i = 0; i < numberOfWrites; i++) {
 #if MOD == 64
-    for (int i = 0; i < numberOfWrites; i += 8) {
+        offset = (i * 8) % (ALLOCATOR_AREA_SIZE - 8 + 1);
 #elif MOD == 128
-    for (int i = 0; i < numberOfWrites; i += 16) {
+        offset = (i * 16) % (ALLOCATOR_AREA_SIZE - 8 + 1);
 #elif MOD == 256
-    for (int i = 0; i < numberOfWrites; i += 32) {
+        offset = (i * 32) % (ALLOCATOR_AREA_SIZE - 8 + 1);
 #elif MOD == 512
-    for (int i = 0; i < numberOfWrites; i += 64) {
+        offset = (i * 64) % (ALLOCATOR_AREA_SIZE - 8 + 1);
 #endif
-        offset = i % (ALLOCATOR_AREA_SIZE - 8 + 1);
         *(int64_t *)(area + offset) = new_value;
     }
+
     for (int i = 0; i < numberOfReads; i++) {
-        offset = i % (ALLOCATOR_AREA_SIZE - 8 + 1);
+#if MOD == 64
+        offset = (i * 8) % (ALLOCATOR_AREA_SIZE - 8 + 1);
+#elif MOD == 128
+        offset = (i * 16) % (ALLOCATOR_AREA_SIZE - 8 + 1);
+#elif MOD == 256
+        offset = (i * 32) % (ALLOCATOR_AREA_SIZE - 8 + 1);
+#elif MOD == 512
+        offset = (i * 64) % (ALLOCATOR_AREA_SIZE - 8 + 1);
+#endif
         read_value = *(int64_t *)(area + offset);
     }
     end = clock();
@@ -159,10 +171,12 @@ int verify_checkpoint(int8_t *area, int8_t *init_A_copy) {
                 if (*(u_int64_t *)(init_A_copy + target_offset) != *(u_int64_t *)(areaS + target_offset)) {
                     fprintf(stderr,
                             "Checkpoint verify failed:\n"
-                            "Offset 0x%x\n"
+                            "Word Offset 0x%x\n"
+                            "Target Offeset 0x%x\n"
                             "Area S value: 0x%lx\n"
                             "Area A init Value: 0x%lx\n",
-                            offset, *(u_int64_t *)(areaS + target_offset), *(u_int64_t *)(init_A_copy + target_offset));
+                            offset, target_offset, *(u_int64_t *)(areaS + target_offset),
+                            *(u_int64_t *)(init_A_copy + target_offset));
                     return -1;
                 }
 #elif MOD == 128
