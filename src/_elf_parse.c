@@ -489,11 +489,12 @@ int elf_parse(char **function_names, char *parsable_elf) {
         exit(EXIT_FAILURE);
     }
 
+    char *function_name = (char *)malloc(256 +4);
     for (i = 0; i < num_functions; i++) { // parsing all the functions
         AUDIT
         printf("searching for function %s\n", function_names[i]);
         offset = fseek(the_file, 0, SEEK_SET); // moving to the beginning of the ELF file
-
+        sprintf(function_name, "<%s>:", function_names[i]);
         while (1) {
             guard = fgets(buffer, LINE_SIZE, the_file);
             if (guard == NULL) {
@@ -504,7 +505,7 @@ int elf_parse(char **function_names, char *parsable_elf) {
                 break;
             }
             strtok(buffer, "\n");
-            if (strstr(buffer, function_names[i])) {
+            if (strstr(buffer, function_name)) {
                 AUDIT
                 printf("found line for function %s\n", function_names[i]);
                 strtok(buffer, " ");
@@ -809,6 +810,7 @@ int elf_parse(char **function_names, char *parsable_elf) {
             }
         }
     }
+    free(function_name);
 
     return target_instructions;
 }
