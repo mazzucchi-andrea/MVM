@@ -82,11 +82,11 @@ second_qword:
         mov (%rcx, %rax, 8), %rbx
         mov %rbx, ALLOCATOR_AREA_SIZE(%rcx, %rax, 8)
 end_checkpoint:
-        mov %gs:24, %ah
+        mov %gs:0x18, %ah
         sahf
-        mov %gs:0, %rax
-        mov %gs:8, %rbx
-        mov %gs:16, %rcx
+        mov %gs:0x00, %rax
+        mov %gs:0x08, %rbx
+        mov %gs:0x10, %rcx
 
 #elif MOD == 128
         mov %rax, %rcx
@@ -95,6 +95,7 @@ end_checkpoint:
         test $15,%ax
         jz second_dqword
         and $0x7ffff0, %rax
+        movdqu (%rcx, %rax,), %xmm1
         shr $4, %rax
         mov %rax, %rbx
         and $15, %rbx
@@ -104,7 +105,6 @@ end_checkpoint:
         shl $4, %rax
         add %rbx, %rax
         shl $4, %rax
-        movdqu (%rcx, %rax,), %xmm1
         movdqu %xmm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
         jmp check_last
 next_dqword:
@@ -116,6 +116,7 @@ check_last:
         je end_checkpoint
         add $16, %rax
 second_dqword:
+        movdqu (%rcx, %rax,), %xmm1
         shr $4, %rax
         mov %rax, %rbx
         and $15, %rbx
@@ -125,15 +126,14 @@ second_dqword:
         shl $4, %rax
         add %rbx, %rax
         shl $4, %rax
-        movdqu (%rcx, %rax,), %xmm1
         movdqu %xmm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
 end_checkpoint:
-        mov %gs:40, %ah
+        mov %gs:0x18, %ah
         sahf
-        mov %gs:0, %rax
-        mov %gs:8, %rbx
-        mov %gs:16, %rcx
-        movdqu %gs:24, %xmm1
+        mov %gs:0x00, %rax
+        mov %gs:0x08, %rbx
+        mov %gs:0x10, %rcx
+        movdqu %gs:0x1c, %xmm1
 
 #elif MOD == 256
         mov %rax, %rcx
@@ -142,6 +142,7 @@ end_checkpoint:
         test $31,%al
         jz second_256bit
         and $0x7fffe0,%rax
+        vmovdqu (%rcx, %rax,), %ymm1
         shr $5, %rax
         mov %rax, %rbx
         and $15, %rbx
@@ -151,7 +152,6 @@ end_checkpoint:
         shl $4, %rax
         add %rbx, %rax
         shl $5, %rax
-        vmovdqu (%rcx, %rax,), %ymm1
         vmovdqu %ymm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
         jmp check_last
 next_256bit:
@@ -163,6 +163,7 @@ check_last:
         je end_checkpoint
         add $32, %rax
 second_256bit:
+        vmovdqu (%rcx, %rax,), %ymm1
         shr $5, %rax
         mov %rax, %rbx
         and $15, %rbx
@@ -172,15 +173,14 @@ second_256bit:
         shl $4, %rax
         add %rbx, %rax
         shl $5, %rax
-        vmovdqu (%rcx, %rax,), %ymm1
         vmovdqu %ymm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
 end_checkpoint:
-        mov %gs:56, %ah
+        mov %gs:0x18, %ah
         sahf
-        mov %gs:0, %rax
-        mov %gs:8, %rbx
-        mov %gs:16, %rcx
-        vmovdqu %gs:24, %ymm1
+        mov %gs:0x00, %rax
+        mov %gs:0x08, %rbx
+        mov %gs:0x10, %rcx
+        vmovdqu %gs:0x1c, %ymm1
 
 #else
 	mov %rax, %rcx
@@ -210,6 +210,7 @@ check_last:
         je end_checkpoint
         add $64, %rax
 second_512bit:
+        vmovdqu64 (%rcx, %rax,), %zmm1
         shr $6, %rax
         mov %rax, %rbx
         and $15, %rbx
@@ -219,13 +220,12 @@ second_512bit:
         shl $4, %rax
         add %rbx, %rax
         shl $6, %rax
-        vmovdqu64 (%rcx, %rax,), %zmm1
         vmovdqu64 %zmm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
 end_checkpoint:
-        mov %gs:88, %ah
+        mov %gs:0x18, %ah
         sahf
-        mov %gs:0, %rax
-        mov %gs:8, %rbx
-        mov %gs:16, %rcx
-        vmovdqu64 %gs:24, %zmm1
+        mov %gs:0x00, %rax
+        mov %gs:0x08, %rbx
+        mov %gs:0x10, %rcx
+        vmovdqu64 %gs:0x1c, %zmm1
 #endif
