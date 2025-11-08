@@ -7,7 +7,6 @@
 
 #include "elf_parse.h"
 
-
 void the_patch(unsigned long, unsigned long) __attribute__((used));
 
 // the_patch(...) is the default function offered by MVM for instrumenting
@@ -159,7 +158,7 @@ void ckpt_patch(instruction_record *actual_instruction, patch *actual_patch) {
     int fd;
     int ret;
     actual_instruction->instrumentation_instructions += 1;
-    sprintf(buffer, "lea %s, %%rax\n", actual_instruction->dest);
+    sprintf(buffer, "lea %s, %%rcx\n", actual_instruction->dest);
     AUDIT printf("Load the store's address into rax: %s", buffer);
     fd = open(user_defined_temp_file, O_CREAT | O_TRUNC | O_RDWR, 0666);
     if (fd == -1) {
@@ -200,32 +199,7 @@ void ckpt_patch(instruction_record *actual_instruction, patch *actual_patch) {
     close(fd);
 }
 
-void save_regs_tls(patch *actual_patch) {
-#if MOD == 64
-    u_int8_t instructions[36] = {
-#elif MOD == 128 || MOD == 256
-    u_int8_t instructions[46] = {
-#else
-    u_int8_t instructions[48] = {
-#endif
-    0x65, 0x48, 0x89, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00,           // mov %rax, %gs:0x0
-    0x65, 0x48, 0x89, 0x1c, 0x25, 0x08, 0x00, 0x00, 0x00,   // mov %rbx, %gs:0x08
-    0x65, 0x48, 0x89, 0x0c, 0x25, 0x10, 0x00, 0x00, 0x00,   // mov %rcx, %gs:0x10
-    0x9f,                                                                                           // lahf
-    0x65, 0x88, 0x24, 0x25, 0x18, 0x00, 0x00, 0x00, 	        // mov %ah, %gs:0x18
-#if MOD == 128
-    0x65, 0xf3, 0x0f, 0x7f, 0x0c, 0x25, 0x1c, 0x00, 0x00, 0x00              // movdqu %xmm1, %gs:0x1c
-#elif MOD == 256
-    0x65, 0xc5, 0xfe, 0x7f, 0x0c, 0x25, 0x1c, 0x00, 0x00, 0x00              // vmovdqu %ymm1, %gs:0x1c
-#elif MOD == 512
-    0x65, 0x62, 0xf1, 0xfe, 0x48, 0x7f, 0x0c, 0x25, 0x1c, 0x00, 0x00, 0x00  // vmovdqu64 %zmm1,%gs:0x1c
-#endif
-    };
-#if MOD == 64
-    memcpy(actual_patch->code, (void *)instructions, 36);
-#elif MOD == 128 || MOD == 256
-    memcpy(actual_patch->code, (void *)instructions, 46);
-#else
-    memcpy(actual_patch->code, (void *)instructions, 48);
-#endif
+void save_rcx_tls(patch *actual_patch) {
+    u_int8_t instructions[9] = {0x65, 0x48, 0x89, 0x0c, 0x25, 0x10, 0x00, 0x00, 0x00}; // mov %rcx, %gs:0x10
+    memcpy(actual_patch->code, (void *)instructions, 9);
 }

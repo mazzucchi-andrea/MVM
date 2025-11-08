@@ -1,6 +1,8 @@
 #include <emmintrin.h> // SSE2
 
+#if MOD > 128
 #include <immintrin.h> // AVX
+#endif
 
 #include <linux/limits.h>
 
@@ -27,13 +29,13 @@
 #endif
 
 #if MOD == 64
-#define BITARRAY_SIZE ALLOCATOR_AREA_SIZE / 8
+#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 8) / 8
 #elif MOD == 128
-#define BITARRAY_SIZE ALLOCATOR_AREA_SIZE / 16
+#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 16) / 8
 #elif MOD == 256
-#define BITARRAY_SIZE ALLOCATOR_AREA_SIZE / 32
+#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 32) / 8
 #else
-#define BITARRAY_SIZE ALLOCATOR_AREA_SIZE / 64
+#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 64) / 8
 #endif
 
 /* Initialize the area with the given quadword */
@@ -45,7 +47,7 @@ void init_area(int8_t *area, int64_t init_value) {
 
 /* Save original values and set the bitarray bit before writing the new value
  * and read */
-void test_checkpoint_not_aligned(int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
+double test_checkpoint_not_aligned(int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
     int offset = 0;
     int64_t read_value;
     clock_t begin, end;
@@ -65,10 +67,10 @@ void test_checkpoint_not_aligned(int8_t *area, int64_t new_value, int numberOfWr
     end = clock();
 
     time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    printf("Time spent by %d writes and %d reads: %f s\n", numberOfWrites, numberOfReads, time_spent);
+    return time_spent;
 }
 
-void test_checkpoint_aligned(int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
+double test_checkpoint_aligned(int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
     int offset;
     int64_t read_value;
     clock_t begin, end;
@@ -76,37 +78,38 @@ void test_checkpoint_aligned(int8_t *area, int64_t new_value, int numberOfWrites
 
     begin = clock();
     for (int i = 0; i < numberOfWrites; i++) {
-#if MOD == 64
-        offset = (i * 8) % (ALLOCATOR_AREA_SIZE - 8 + 1);
-#elif MOD == 128
-        offset = (i * 16) % (ALLOCATOR_AREA_SIZE - 8 + 1);
-#elif MOD == 256
-        offset = (i * 32) % (ALLOCATOR_AREA_SIZE - 8 + 1);
-#elif MOD == 512
-        offset = (i * 64) % (ALLOCATOR_AREA_SIZE - 8 + 1);
-#endif
+        offset %= (ALLOCATOR_AREA_SIZE - 8 + 1);
         *(int64_t *)(area + offset) = new_value;
-    }
-
-    for (int i = 0; i < numberOfReads; i++) {
 #if MOD == 64
-        offset = (i * 8) % (ALLOCATOR_AREA_SIZE - 8 + 1);
+        offset += 8;
 #elif MOD == 128
-        offset = (i * 16) % (ALLOCATOR_AREA_SIZE - 8 + 1);
+        offset += 16;
 #elif MOD == 256
-        offset = (i * 32) % (ALLOCATOR_AREA_SIZE - 8 + 1);
+        offset += 32;
 #elif MOD == 512
-        offset = (i * 64) % (ALLOCATOR_AREA_SIZE - 8 + 1);
+        offset += 64;
 #endif
+    }
+    for (int i = 0; i < numberOfReads; i++) {
+        offset %= (ALLOCATOR_AREA_SIZE - 8 + 1);
         read_value = *(int64_t *)(area + offset);
+#if MOD == 64
+        offset += 8;
+#elif MOD == 128
+        offset += 16;
+#elif MOD == 256
+        offset += 32;
+#elif MOD == 512
+        offset += 64;
+#endif
     }
     end = clock();
 
     time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    printf("Time spent by %d writes and %d reads: %f s\n", numberOfWrites, numberOfReads, time_spent);
+    return time_spent;
 }
 
-void restore_area(int8_t *area) {
+double restore_area_test(int8_t *area) {
     int8_t *bitarray = area + 2 * ALLOCATOR_AREA_SIZE;
     int8_t *src = area + ALLOCATOR_AREA_SIZE;
     int8_t *dst = area;
@@ -116,12 +119,11 @@ void restore_area(int8_t *area) {
     double time_spent;
     begin = clock();
 
-    for (int offset = 0; offset < BITARRAY_SIZE; offset += 32) {
-        __m256i bitarray_vec = _mm256_loadu_si256((__m256i *)(bitarray + offset));
-        if (_mm256_testz_si256(bitarray_vec, bitarray_vec)) {
+    for (int offset = 0; offset < BITARRAY_SIZE; offset += 8) {
+        if (*(u_int64_t *)(bitarray + offset) == 0) {
             continue;
         }
-        for (int i = 0; i < 32; i += 2) {
+        for (int i = 0; i < 8; i += 2) {
             current_word = *(u_int16_t *)(bitarray + offset + i);
             if (current_word == 0) {
                 continue;
@@ -148,11 +150,12 @@ void restore_area(int8_t *area) {
             }
         }
     }
+
     memset(bitarray, 0, BITARRAY_SIZE);
 
     end = clock();
     time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    printf("Time spent by restore: %f s\n", time_spent);
+    return time_spent;
 }
 
 /* Verify that the set bits correspond to the correctly saved quadwords. */
@@ -231,6 +234,13 @@ int verify_checkpoint(int8_t *area, int8_t *init_A_copy) {
     return 0;
 }
 
+void clean_cache(int8_t *area) {
+    int cache_line_size = __builtin_cpu_supports("sse2") ? 64 : 32;
+    for (int i = 0; i < (2 * ALLOCATOR_AREA_SIZE + BITARRAY_SIZE); i += (cache_line_size / 8)) {
+        _mm_clflush(area + i);
+    }
+}
+
 /* Two parameters are needed to run the tests:
  * - numberOfWrites: the number of write operations to perform;
  * - numberOfReads: the number of read operations to perform;
@@ -238,6 +248,7 @@ int verify_checkpoint(int8_t *area, int8_t *init_A_copy) {
 int main(int argc, char *argv[]) {
     char *endptr;
     int numberOfWrites, numberOfReads, ret;
+    double wr_time, restore_time;
     u_int64_t init_value, first_value, second_value;
 
     if (argc < 3) {
@@ -295,41 +306,67 @@ int main(int argc, char *argv[]) {
     }
 
     memcpy(init_area_copy, area, ALLOCATOR_AREA_SIZE);
-
     ret = memcmp(area, init_area_copy, ALLOCATOR_AREA_SIZE);
     if (ret) {
         fprintf(stderr, "Area A check failed: %d\n", ret);
         return EXIT_FAILURE;
     }
 
-    printf("Start Tests\n");
+    clean_cache(area);
 
-    printf("\nTest Checkpoint with not aligned writes\n");
+    printf("Start Tests with MOD %d\n\n", MOD);
+
+    printf("Test Checkpoint with not aligned writes\n");
+
+    for (int i = 0; i < 256; i++) {
+        wr_time += test_checkpoint_not_aligned(area, first_value, numberOfWrites, numberOfReads);
+        if (verify_checkpoint(area, init_area_copy)) {
+            return EXIT_FAILURE;
+        }
+        restore_time += restore_area_test(area);
+        ret = memcmp(area, init_area_copy, ALLOCATOR_AREA_SIZE);
+        if (ret) {
+            fprintf(stderr, "Area A restore check failed: 0x%x\n", ret);
+            return EXIT_FAILURE;
+        }
+    }
+    printf("Time spent by %d writes and %d reads: %f s\n", numberOfWrites, numberOfReads, wr_time / 256);
+    printf("Time spent by restore: %f s\n\n", restore_time / 256);
+
+    clean_cache(area);
+
+    printf("Repeat writes and reads to verify the time spent on already saved areas.\n");
     test_checkpoint_not_aligned(area, first_value, numberOfWrites, numberOfReads);
     if (verify_checkpoint(area, init_area_copy)) {
         return EXIT_FAILURE;
     }
-
-    printf("\nRepeat writes and reads to verify the time spent on already saved areas.\n");
-    test_checkpoint_not_aligned(area, second_value, numberOfWrites, numberOfReads);
-    if (verify_checkpoint(area, init_area_copy)) {
-        return EXIT_FAILURE;
+    wr_time = 0;
+    for (int i = 0; i < 256; i++) {
+        wr_time += test_checkpoint_not_aligned(area, second_value, numberOfWrites, numberOfReads);
     }
+    printf("Time spent by %d writes and %d reads: %f s\n\n", numberOfWrites, numberOfReads, wr_time / 256);
 
-    printf("\nTest Restore Function\n");
-    restore_area(area);
-    ret = memcmp(area, init_area_copy, ALLOCATOR_AREA_SIZE);
-    if (ret) {
-        fprintf(stderr, "Area A restore check failed: 0x%x\n", ret);
-        return EXIT_FAILURE;
+    restore_area_test(area);
+    clean_cache(area);
+    wr_time = 0;
+    restore_time = 0;
+
+    printf("Test Checkpoint with aligned writes\n");
+    for (int i = 0; i < 256; i++) {
+        wr_time += test_checkpoint_aligned(area, first_value, numberOfWrites, numberOfReads);
+        if (verify_checkpoint(area, init_area_copy)) {
+            return EXIT_FAILURE;
+        }
+        restore_time += restore_area_test(area);
+        ret = memcmp(area, init_area_copy, ALLOCATOR_AREA_SIZE);
+        if (ret) {
+            fprintf(stderr, "Area A restore check failed: 0x%x\n", ret);
+            return EXIT_FAILURE;
+        }
     }
+    printf("Time spent by %d writes and %d reads: %f s\n", numberOfWrites, numberOfReads, wr_time / 256);
+    printf("Time spent by restore: %f s\n\n", restore_time / 256);
 
-    printf("\nTest Checkpoint with aligned writes\n");
-    test_checkpoint_aligned(area, first_value, numberOfWrites, numberOfReads);
-    if (verify_checkpoint(area, init_area_copy)) {
-        return EXIT_FAILURE;
-    }
-
-    printf("\nTest Passed\n");
+    printf("Test Passed\n");
     return EXIT_SUCCESS;
 }
