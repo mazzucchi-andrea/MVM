@@ -157,6 +157,8 @@ void user_defined(instruction_record *actual_instruction, patch *actual_patch) {
 void ckpt_patch(instruction_record *actual_instruction, patch *actual_patch) {
     int fd;
     int ret;
+    u_int8_t instructions[9] = {0x65, 0x48, 0x89, 0x0c, 0x25, 0x10, 0x00, 0x00, 0x00}; // mov %rcx, %gs:0x10
+    memcpy(actual_patch->code, (void *)instructions, 9);
     actual_instruction->instrumentation_instructions += 1;
     sprintf(buffer, "lea %s, %%rcx\n", actual_instruction->dest);
     AUDIT printf("Load the store's address into rax: %s", buffer);
@@ -194,12 +196,7 @@ void ckpt_patch(instruction_record *actual_instruction, patch *actual_patch) {
         exit(EXIT_FAILURE);
     }
 
-    memcpy(actual_patch->code, buffer, ret);
+    memcpy((actual_patch->code) + 9, buffer, ret);
 
     close(fd);
-}
-
-void save_rcx_tls(patch *actual_patch) {
-    u_int8_t instructions[9] = {0x65, 0x48, 0x89, 0x0c, 0x25, 0x10, 0x00, 0x00, 0x00}; // mov %rcx, %gs:0x10
-    memcpy(actual_patch->code, (void *)instructions, 9);
 }

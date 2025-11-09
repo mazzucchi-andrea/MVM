@@ -14,7 +14,6 @@
 void user_defined(instruction_record *, patch *);
 #if CKPT
 void ckpt_patch(instruction_record *, patch *);
-void save_rcx_tls(patch *);
 #endif
 
 uint64_t asl_randomization = 0;
@@ -182,10 +181,9 @@ void build_patches(void) {
 
 #ifdef CKPT
         memset((char *)(patches[i].code), 0x90, 19 + ckpt_code_size);
-        save_rcx_tls(&patches[i]);
-        patches[i].code = patches[i].code + 9; // 9 is the size of the instructions to save rcx in gs
         ckpt_patch(&instructions[i], &patches[i]);
-        patches[i].code = patches[i].code + 10; // 10 is the maximum size of the lea instruction
+        patches[i].code =
+            patches[i].code + 19; // 10 is the maximum size of the lea instruction and 9 is the instruction to save rcx
         memcpy((char *)(patches[i].code), (char *)(ckpt_code), ckpt_code_size);
         patches[i].code = patches[i].code + ckpt_code_size;
 #endif

@@ -1,8 +1,6 @@
 #include <emmintrin.h> // SSE2
 
-#if MOD > 128
 #include <immintrin.h> // AVX
-#endif
 
 #include <linux/limits.h>
 
@@ -248,7 +246,7 @@ void clean_cache(int8_t *area) {
 int main(int argc, char *argv[]) {
     char *endptr;
     int numberOfWrites, numberOfReads, ret;
-    double wr_time, restore_time;
+    double wr_time = 0.0, restore_time = 0.0;
     u_int64_t init_value, first_value, second_value;
 
     if (argc < 3) {
