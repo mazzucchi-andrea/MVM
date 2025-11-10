@@ -2,7 +2,6 @@
 
 #include <immintrin.h> // AVX
 
-#include <stddef.h>
 #include <string.h>
 
 #include <sys/mman.h>
@@ -86,3 +85,5 @@ void restore_area(int8_t *area) {
     }
     memset(bitarray, 0, BITARRAY_SIZE);
 }
+
+void set_ckpt(int8_t *area) { memset(area + 2 * ALLOCATOR_AREA_SIZE, 0, BITARRAY_SIZE); }

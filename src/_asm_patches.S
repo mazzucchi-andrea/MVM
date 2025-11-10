@@ -188,7 +188,7 @@ end_checkpoint:
         mov %gs:0x10, %rcx
         vmovdqa %gs:0x20, %ymm1
 
-#else
+#elif MOD == 512
         vmovdqa64 %zmm1,%gs:0x40
 	mov %ecx, %eax
         and $0xffffffffffc00000, %rcx
@@ -235,4 +235,6 @@ end_checkpoint:
         mov %gs:0x08, %rbx
         mov %gs:0x10, %rcx
         vmovdqa64 %gs:0x40, %zmm1
+#else
+#error "Valid MODs are 64, 128, 256, and 512."
 #endif
