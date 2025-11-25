@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void *tls_setup();
+int tls_setup();
 
 void restore_area(int8_t *);
 

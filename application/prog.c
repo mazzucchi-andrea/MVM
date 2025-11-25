@@ -18,12 +18,12 @@
 
 #include "ckpt_setup.h"
 
-#ifndef ALLOCATOR_AREA_SIZE
-#define ALLOCATOR_AREA_SIZE 0x100000UL
-#endif
-
 #ifndef MOD
 #define MOD 64
+#endif
+
+#ifndef ALLOCATOR_AREA_SIZE
+#define ALLOCATOR_AREA_SIZE 0x100000UL
 #endif
 
 #if MOD == 64
@@ -32,8 +32,10 @@
 #define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 16) / 8
 #elif MOD == 256
 #define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 32) / 8
-#else
+#elif MOD == 512
 #define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 64) / 8
+#else
+#error "Valid MODs are 64, 128, 256, and 512."
 #endif
 
 /* Initialize the area with the given quadword */
@@ -84,7 +86,7 @@ double test_checkpoint_aligned(int8_t *area, int64_t new_value, int numberOfWrit
         offset += 16;
 #elif MOD == 256
         offset += 32;
-#elif MOD == 512
+#else
         offset += 64;
 #endif
     }
@@ -97,7 +99,7 @@ double test_checkpoint_aligned(int8_t *area, int64_t new_value, int numberOfWrit
         offset += 16;
 #elif MOD == 256
         offset += 32;
-#elif MOD == 512
+#else
         offset += 64;
 #endif
     }
@@ -269,7 +271,7 @@ int main(int argc, char *argv[]) {
     printf("Number of Writes: %d\n", numberOfWrites);
     printf("Number of Reads: %d\n\n", numberOfReads);
 
-    if (tls_setup() == NULL) {
+    if (tls_setup()) {
         return EXIT_FAILURE;
     }
 
@@ -293,7 +295,8 @@ int main(int argc, char *argv[]) {
 
     printf("BaseA: %p\n", area);
     printf("BaseS: %p\n", area + ALLOCATOR_AREA_SIZE);
-    printf("BaseM: %p\n\n", area + 2 * ALLOCATOR_AREA_SIZE);
+    printf("BaseM: %p\n", area + 2 * ALLOCATOR_AREA_SIZE);
+    printf("Bitarray Size: %ld\n\n", BITARRAY_SIZE);
 
     init_area(area, init_value);
     int8_t *init_area_copy =
