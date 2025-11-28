@@ -161,7 +161,7 @@ void ckpt_patch(instruction_record *actual_instruction, patch *actual_patch) {
     memcpy(actual_patch->code, (void *)instructions, 9);
     actual_instruction->instrumentation_instructions += 1;
     sprintf(buffer, "lea %s, %%rcx\n", actual_instruction->dest);
-    AUDIT printf("Load the store's address into rax: %s", buffer);
+    AUDIT printf("Load the store's address into rcx: %s", buffer);
     fd = open(user_defined_temp_file, O_CREAT | O_TRUNC | O_RDWR, 0666);
     if (fd == -1) {
         printf("%s: error opening temp file %s\n", VM_NAME, user_defined_temp_file);
@@ -197,6 +197,7 @@ void ckpt_patch(instruction_record *actual_instruction, patch *actual_patch) {
     }
 
     memcpy((actual_patch->code) + 9, buffer, ret);
+    actual_instruction->instrumentation_instructions += 1;
 
     close(fd);
 }

@@ -296,7 +296,7 @@ int main(int argc, char *argv[]) {
     printf("BaseA: %p\n", area);
     printf("BaseS: %p\n", area + ALLOCATOR_AREA_SIZE);
     printf("BaseM: %p\n", area + 2 * ALLOCATOR_AREA_SIZE);
-    printf("Bitarray Size: %ld\n\n", BITARRAY_SIZE);
+    printf("Bitarray Size: 0x%lx\n\n", BITARRAY_SIZE);
 
     init_area(area, init_value);
     int8_t *init_area_copy =

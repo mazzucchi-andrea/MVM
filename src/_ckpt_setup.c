@@ -31,16 +31,22 @@
 extern int arch_prctl(int code, unsigned long addr);
 
 int tls_setup() {
-    unsigned long addr;
     size_t size;
-#if MOD == 512
-    size = 128;
-#else
+
+#if MOD == 64
+    size = 32;
+#elif MOD == 128 || MOD == 256
     size = 64;
+#else
+    size = 128;
 #endif
-    addr = (unsigned long)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
-    memset((void *)addr, 0, size);
-    if (arch_prctl(ARCH_SET_GS, addr)) {
+
+    void *addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+    if (addr == MAP_FAILED) {
+        return -1;
+    }
+    memset(addr, 0, size);
+    if (arch_prctl(ARCH_SET_GS, (unsigned long)addr)) {
         return -1;
     }
     return 0;
