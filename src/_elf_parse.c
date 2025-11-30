@@ -76,7 +76,7 @@ void build_intermediate_representation(void) {
         patches[i].functional_instr_size = 0;
 
         // just passing through user-defined stuff
-        // user_defined(&instructions[i], &patches[i]);
+        user_defined(&instructions[i], &patches[i]);
     }
 }
 
@@ -910,7 +910,9 @@ int __wrap_main(int argc, char **argv) {
 
     find_intermediate_zones(disassembly_file);
 
+#if ASM_PREAMBLE
     build_intermediate_representation();
+#endif
 
     build_patches();
 

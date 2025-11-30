@@ -1,8 +1,9 @@
 #ifndef _ELF_PARSE_
 #define _ELF_PARSE_
 
-#include "head.h"
 #include <stdint.h>
+
+#include "head.h"
 
 #define TARGET_FUNCTIONS  128 //max number of functions to be checked for instrumentation
 

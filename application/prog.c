@@ -16,8 +16,6 @@
 
 #include <time.h>
 
-#include "ckpt_setup.h"
-
 #ifndef MOD
 #define MOD 64
 #endif
@@ -39,7 +37,7 @@
 #endif
 
 /* Initialize the area with the given quadword */
-void init_area(int8_t *area, int64_t init_value) {
+void init_area(u_int8_t *area, int64_t init_value) {
     for (int i = 0; i < (ALLOCATOR_AREA_SIZE - 8); i += 8) {
         *(int64_t *)(area + i) = init_value;
     }
@@ -47,7 +45,7 @@ void init_area(int8_t *area, int64_t init_value) {
 
 /* Save original values and set the bitarray bit before writing the new value
  * and read */
-double test_checkpoint_not_aligned(int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
+double test_checkpoint_not_aligned(u_int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
     int offset = 0;
     int64_t read_value;
     clock_t begin, end;
@@ -70,7 +68,7 @@ double test_checkpoint_not_aligned(int8_t *area, int64_t new_value, int numberOf
     return time_spent;
 }
 
-double test_checkpoint_aligned(int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
+double test_checkpoint_aligned(u_int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
     int offset;
     int64_t read_value;
     clock_t begin, end;
@@ -109,10 +107,10 @@ double test_checkpoint_aligned(int8_t *area, int64_t new_value, int numberOfWrit
     return time_spent;
 }
 
-double restore_area_test(int8_t *area) {
-    int8_t *bitarray = area + 2 * ALLOCATOR_AREA_SIZE;
-    int8_t *src = area + ALLOCATOR_AREA_SIZE;
-    int8_t *dst = area;
+double restore_area_test(u_int8_t *area) {
+    u_int8_t *bitarray = area + 2 * ALLOCATOR_AREA_SIZE;
+    u_int8_t *src = area + ALLOCATOR_AREA_SIZE;
+    u_int8_t *dst = area;
     u_int16_t current_word;
     int target_offset;
     clock_t begin, end;
@@ -159,9 +157,9 @@ double restore_area_test(int8_t *area) {
 }
 
 /* Verify that the set bits correspond to the correctly saved quadwords. */
-int verify_checkpoint(int8_t *area, int8_t *init_A_copy) {
-    int8_t *bitarray = area + ALLOCATOR_AREA_SIZE * 2;
-    int8_t *areaS = area + ALLOCATOR_AREA_SIZE;
+int verify_checkpoint(u_int8_t *area, u_int8_t *init_A_copy) {
+    u_int8_t *bitarray = area + ALLOCATOR_AREA_SIZE * 2;
+    u_int8_t *areaS = area + ALLOCATOR_AREA_SIZE;
     for (int offset = 0; offset < BITARRAY_SIZE; offset += 2) {
         u_int16_t current_word = *(u_int16_t *)(bitarray + offset);
         if (current_word == 0) {
@@ -234,7 +232,7 @@ int verify_checkpoint(int8_t *area, int8_t *init_A_copy) {
     return 0;
 }
 
-void clean_cache(int8_t *area) {
+void clean_cache(u_int8_t *area) {
     int cache_line_size = __builtin_cpu_supports("sse2") ? 64 : 32;
     for (int i = 0; i < (2 * ALLOCATOR_AREA_SIZE + BITARRAY_SIZE); i += (cache_line_size / 8)) {
         _mm_clflush(area + i);
@@ -271,10 +269,6 @@ int main(int argc, char *argv[]) {
     printf("Number of Writes: %d\n", numberOfWrites);
     printf("Number of Reads: %d\n\n", numberOfReads);
 
-    if (tls_setup()) {
-        return EXIT_FAILURE;
-    }
-
     srand(42);
     init_value = rand() % (0xFFFFFFFFFFFFFFFF - 1 + 1) + 1;
     first_value = rand() % (0xFFFFFFFFFFFFFFFF - 1 + 1) + 1;
@@ -285,7 +279,7 @@ int main(int argc, char *argv[]) {
     printf("Second Value 0x%lx\n\n", second_value);
 
     size_t alignment = 8 * (1024 * ALLOCATOR_AREA_SIZE);
-    int8_t *area = (int8_t *)aligned_alloc(alignment, ALLOCATOR_AREA_SIZE * 2 + BITARRAY_SIZE);
+    u_int8_t *area = (u_int8_t *)aligned_alloc(alignment, ALLOCATOR_AREA_SIZE * 2 + BITARRAY_SIZE);
     if (area == NULL) {
         perror("aligned_alloc failed\n");
         return EXIT_FAILURE;
@@ -299,8 +293,8 @@ int main(int argc, char *argv[]) {
     printf("Bitarray Size: 0x%lx\n\n", BITARRAY_SIZE);
 
     init_area(area, init_value);
-    int8_t *init_area_copy =
-        (int8_t *)mmap(NULL, ALLOCATOR_AREA_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+    u_int8_t *init_area_copy =
+        (u_int8_t *)mmap(NULL, ALLOCATOR_AREA_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
     if (init_area_copy == MAP_FAILED) {
         perror("mmap init area copy");
         return EXIT_FAILURE;

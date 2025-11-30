@@ -34,7 +34,7 @@ UDTEMPOBJ = -Duser_defined_temp_obj_file=\"$(USER_DEFINED)/$(USER_DEFINED_OBJ_FI
 
 SECURITY_FLAGS = -pie -fPIE -fstack-protector-all
 
-ADDITIONAL_FLAGS = -O3 -DCKPT -DAPPLY_PATCHES -DVERBOSE
+ADDITIONAL_FLAGS = -O3 -DASM_PREAMBLE -DAPPLY_PATCHES -DVERBOSE
 
 #NOTE: 
 #the ASM_PREAMBLE macro enables building a demo patch for each memory access instruction
@@ -80,7 +80,7 @@ asm-patch:
 	objdump -Dw $(OBJ)/_asm_patches.o > $(TEMP)/disassembly_asm_patch                   
 
 patch:
-	cd ./patches; gcc patches.c -c -I$(INCLUDE) $(THE_VM) $(UDTEMPDIR) $(UDTEMPFILE) $(UDTEMPOBJ) $(SECURITY_FLAGS) $(ADDITIONAL_FLAGS) -o $(OBJ)/_patches.o
+	cd ./patches; gcc patches.c -c -I$(INCLUDE) $(THE_VM) $(UDTEMPDIR) $(UDTEMPFILE) $(UDTEMPOBJ) $(SECURITY_FLAGS) $(ADDITIONAL_FLAGS) -mavx -mavx2 -mavx512f -DALLOCATOR_AREA_SIZE=$(ALLOCATOR_AREA_SIZE) -DMOD=$(MOD) -o $(OBJ)/_patches.o
 #please rember to insert whatever Makefile in the user-defined directory
 	cd $(USER_DEFINED); make
 
