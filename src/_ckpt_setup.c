@@ -2,6 +2,8 @@
 
 #include <immintrin.h> // AVX
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <sys/mman.h>
@@ -30,29 +32,21 @@
 
 extern int arch_prctl(int code, unsigned long addr);
 
-int tls_setup() {
-    size_t size;
-
-#if MOD == 64
-    size = 32;
-#elif MOD == 128 || MOD == 256
-    size = 64;
-#else
-    size = 128;
-#endif
-
+void _tls_setup() {
+    size_t size = 128;
     void *addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
     if (addr == MAP_FAILED) {
-        return -1;
+        fprintf(stderr,"mmap failed\n");
+        exit(EXIT_FAILURE);
     }
     memset(addr, 0, size);
     if (arch_prctl(ARCH_SET_GS, (unsigned long)addr)) {
-        return -1;
+        fprintf(stderr,"arch_prctl failed\n");
+        exit(EXIT_FAILURE);
     }
-    return 0;
 }
 
-void restore_area(int8_t *area) {
+void _restore_area(int8_t *area) {
     int8_t *bitarray = area + 2 * ALLOCATOR_AREA_SIZE;
     int8_t *src = area + ALLOCATOR_AREA_SIZE;
     int8_t *dst = area;
@@ -93,4 +87,4 @@ void restore_area(int8_t *area) {
     memset(bitarray, 0, BITARRAY_SIZE);
 }
 
-void set_ckpt(int8_t *area) { memset(area + 2 * ALLOCATOR_AREA_SIZE, 0, BITARRAY_SIZE); }
+void _set_ckpt(int8_t *area) { memset(area + 2 * ALLOCATOR_AREA_SIZE, 0, BITARRAY_SIZE); }

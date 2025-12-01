@@ -271,9 +271,7 @@ int main(int argc, char *argv[]) {
     printf("Number of Writes: %d\n", numberOfWrites);
     printf("Number of Reads: %d\n\n", numberOfReads);
 
-    if (tls_setup()) {
-        return EXIT_FAILURE;
-    }
+    _tls_setup();
 
     srand(42);
     init_value = rand() % (0xFFFFFFFFFFFFFFFF - 1 + 1) + 1;

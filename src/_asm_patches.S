@@ -46,9 +46,9 @@ the_patch_assembly:
 // CKPT ASM CODE
 ckpt_assembly:
         mov %rax, %gs:0x00
-        mov %ebx, %gs:0x08
+        mov %rbx, %gs:0x08
         lahf
-        mov %ah, %gs:0x0c
+        mov %ah, %gs:0x18
 #if MOD == 64
         mov %ecx, %eax
         and $0xffffffffffc00000, %rcx
@@ -218,8 +218,8 @@ end_checkpoint:
 #else
 #error "Valid MODs are 64, 128, 256, and 512."
 #endif
-        mov %gs:0x0c, %ah
+        mov %gs:0x18, %ah
         sahf
         mov %gs:0x00, %rax
-        mov %gs:0x08, %ebx
+        mov %gs:0x08, %rbx
         mov %gs:0x10, %rcx

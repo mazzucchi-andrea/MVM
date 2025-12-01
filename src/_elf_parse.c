@@ -115,13 +115,13 @@ void build_patches(void) {
 #if CKPT
     uint64_t ckpt_code = (uint64_t)ckpt_assembly;
 #if MOD == 64
-    int ckpt_code_size = 0xba; // this is taken from the compiled version of the src/_asm_patch.S file
+    int ckpt_code_size = 0xbc; // this is taken from the compiled version of the src/_asm_patch.S file
 #elif MOD == 128
-    int ckpt_code_size = 0xd7;
+    int ckpt_code_size = 0xd9;
 #elif MOD == 256
-    int ckpt_code_size = 0xd5;
+    int ckpt_code_size = 0xd7;
 #else
-    int ckpt_code_size = 0xe1;
+    int ckpt_code_size = 0xe3;
 #endif
 #endif
 
