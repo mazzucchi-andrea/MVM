@@ -39,7 +39,6 @@ void _tls_setup() {
         fprintf(stderr,"mmap failed\n");
         exit(EXIT_FAILURE);
     }
-    memset(addr, 0, size);
     if (arch_prctl(ARCH_SET_GS, (unsigned long)addr)) {
         fprintf(stderr,"arch_prctl failed\n");
         exit(EXIT_FAILURE);
