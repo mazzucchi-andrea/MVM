@@ -18,26 +18,6 @@
 
 #include "ckpt_setup.h"
 
-#ifndef MOD
-#define MOD 64
-#endif
-
-#ifndef ALLOCATOR_AREA_SIZE
-#define ALLOCATOR_AREA_SIZE 0x100000UL
-#endif
-
-#if MOD == 64
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 8) / 8
-#elif MOD == 128
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 16) / 8
-#elif MOD == 256
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 32) / 8
-#elif MOD == 512
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 64) / 8
-#else
-#error "Valid MODs are 64, 128, 256, and 512."
-#endif
-
 /* Initialize the area with the given quadword */
 void init_area(u_int8_t *area, int64_t init_value) {
     for (int i = 0; i < (ALLOCATOR_AREA_SIZE - 8); i += 8) {

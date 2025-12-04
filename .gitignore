@@ -58,9 +58,6 @@ dkms.conf
 .vscode
 .idea
 
-#clang
-.clang-format
-
 # python venv
 *.venv
 

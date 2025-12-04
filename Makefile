@@ -62,6 +62,8 @@ checks:
 
 	@if [ ! -d $(OBJ) ]; then mkdir -p $(OBJ); fi
 	@if [ ! -d $(LIB) ]; then mkdir -p $(LIB); fi
+	@if [ ! -d $(TEMP) ]; then mkdir -p $(TEMP); fi
+	@if [ ! -d $(TEMP)/$(SHADOW) ]; then mkdir -p $(TEMP)/$(SHADOW); fi
 
 base:
 	./scripts/temp-dir.sh $(TEMP) $(TEMP)/$(INTERMEDIATEFILE)
@@ -99,4 +101,4 @@ file-rewriting:
 	export MVM_TEMP_FILE=$(TEMP)/__temp_file ; ./scripts/file-processor.sh $(APP) $(TARGET_MODULES)
 
 clean:
-	find . -name "*.o" -type f -delete ; rm -f $(EXECUTABLE)
+	find . -name "*.o" -type f -delete ; rm -f $(EXECUTABLE) ; find $(TEMP) -type f -exec rm {} +

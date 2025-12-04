@@ -37,10 +37,12 @@ void the_patch(unsigned long mem, unsigned long regs) {
         // AUDIT
         printf("__mvm: accessing memory according to %lu - %lu - %lu - %lu\n", target->displacement, target->base_index,
                target->scale_index, target->scale);
-        if (target->base_index)
+        if (target->base_index) {
             memcpy((char *)&A, (char *)(regs + 8 * (target->base_index - 1)), 8);
-        if (target->scale_index)
+        }
+        if (target->scale_index) {
             memcpy((char *)&B, (char *)(regs + 8 * (target->scale_index - 1)), 8);
+        }
         address = (unsigned long)((long)target->displacement + (long)A + (long)((long)B * (long)target->scale));
         printf("__mvm: accessed address is %p - data size is %d - access type "
                "is %c\n",

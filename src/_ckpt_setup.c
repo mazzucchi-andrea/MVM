@@ -10,45 +10,24 @@
 
 #include "ckpt_setup.h"
 
-#ifndef MOD
-#define MOD 64
-#endif
-
-#ifndef ALLOCATOR_AREA_SIZE
-#define ALLOCATOR_AREA_SIZE 0x100000UL
-#endif
-
-#if MOD == 64
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 8) / 8
-#elif MOD == 128
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 16) / 8
-#elif MOD == 256
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 32) / 8
-#elif MOD == 512
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 64) / 8
-#else
-#error "Valid MODs are 64, 128, 256, and 512."
-#endif
-
 extern int arch_prctl(int code, unsigned long addr);
 
 void _tls_setup() {
-    size_t size = 128;
-    void *addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+    void *addr = mmap(NULL, 128, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
     if (addr == MAP_FAILED) {
-        fprintf(stderr,"mmap failed\n");
+        perror("tls_setup fail caused by mmap");
         exit(EXIT_FAILURE);
     }
     if (arch_prctl(ARCH_SET_GS, (unsigned long)addr)) {
-        fprintf(stderr,"arch_prctl failed\n");
+        perror("tls_setup fail caused by arch_prctl");
         exit(EXIT_FAILURE);
     }
 }
 
-void _restore_area(int8_t *area) {
-    int8_t *bitarray = area + 2 * ALLOCATOR_AREA_SIZE;
-    int8_t *src = area + ALLOCATOR_AREA_SIZE;
-    int8_t *dst = area;
+void _restore_area(u_int8_t *area) {
+    u_int8_t *bitarray = area + 2 * ALLOCATOR_AREA_SIZE;
+    u_int8_t *src = area + ALLOCATOR_AREA_SIZE;
+    u_int8_t *dst = area;
     u_int16_t current_word;
     int target_offset;
 
@@ -86,4 +65,4 @@ void _restore_area(int8_t *area) {
     memset(bitarray, 0, BITARRAY_SIZE);
 }
 
-void _set_ckpt(int8_t *area) { memset(area + 2 * ALLOCATOR_AREA_SIZE, 0, BITARRAY_SIZE); }
+void _set_ckpt(u_int8_t *area) { memset(area + 2 * ALLOCATOR_AREA_SIZE, 0, BITARRAY_SIZE); }
