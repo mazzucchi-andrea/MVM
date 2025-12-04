@@ -117,11 +117,11 @@ void build_patches(void) {
 #if MOD == 64
     int ckpt_code_size = 0xbc; // this is taken from the compiled version of the src/_asm_patch.S file
 #elif MOD == 128
-    int ckpt_code_size = 0xd9;
+    int ckpt_code_size = 0xd5;
 #elif MOD == 256
-    int ckpt_code_size = 0xd7;
+    int ckpt_code_size = 0xd5;
 #else
-    int ckpt_code_size = 0xe3;
+    int ckpt_code_size = 0xe1;
 #endif
 #endif
 
@@ -129,8 +129,9 @@ void build_patches(void) {
 
     for (i = 0; i < target_instructions; i++) {
 #if CKPT
-        if (instructions[i].type == 'l')
+        if (instructions[i].type == 'l') {
             continue; // avoid patch of load instruction
+        }
 #endif
 
         // saving original instruction address
@@ -260,8 +261,9 @@ void build_patches(void) {
                                                                        2)); // this is because we substite the original
                                                                             // instrucion with a 2-byte relative jmp
                 AUDIT
-                if ((char *)jmp_target < ((char *)(instruction_address) + 2))
+                if ((char *)jmp_target < ((char *)(instruction_address) + 2)) {
                     printf("negative intermediate jump displacement for instruction %d\n", i);
+                }
                 pos = 0;
                 v[pos++] = 0xeb;
                 v[pos++] = (unsigned char)(jmp_displacement & 0xff);
@@ -330,8 +332,9 @@ void apply_patches(void) {
 
     for (i = 0; i < target_instructions; i++) {
 #if CKPT
-        if (instructions[i].type == 'l')
+        if (instructions[i].type == 'l') {
             continue; // avoid apply patch to load instructions
+        }
 #endif
         size = instructions[i].size;
         instruction_address = instructions[i].address;
@@ -361,10 +364,12 @@ void apply_patches(void) {
 // this depends on src/_asm_patches.S
 int get_register_index(char *the_register) {
 
-    if (strcmp(the_register, "%rax") == 0)
+    if (strcmp(the_register, "%rax") == 0) {
         return 11;
-    if (strcmp(the_register, "%rdx") == 0)
+    }
+    if (strcmp(the_register, "%rdx") == 0) {
         return 13;
+    }
     return -2;
 }
 
@@ -377,20 +382,23 @@ int operands_check(char *source, char *destination, char type) {
     if (!strcmp(reg, "%eax") || !strcmp(reg, "%ebx") || !strcmp(reg, "%ecx") || !strcmp(reg, "%edx") ||
         !strcmp(reg, "%r8d") || !strcmp(reg, "%r9d") || !strcmp(reg, "%r10d") || !strcmp(reg, "%r11d") ||
         !strcmp(reg, "%r12d") || !strcmp(reg, "%r13d") || !strcmp(reg, "%r14d") || !strcmp(reg, "%r15d") ||
-        !strcmp(reg, "%esi") || !strcmp(reg, "%edi"))
+        !strcmp(reg, "%esi") || !strcmp(reg, "%edi")) {
         return sizeof(int);
+    }
 
     if (!strcmp(reg, "%ax") || !strcmp(reg, "%bx") || !strcmp(reg, "%cx") || !strcmp(reg, "%dx") ||
         !strcmp(reg, "%r8w") || !strcmp(reg, "%r9w") || !strcmp(reg, "%r10w") || !strcmp(reg, "%r11w") ||
         !strcmp(reg, "%r12w") || !strcmp(reg, "%r13w") || !strcmp(reg, "%r14w") || !strcmp(reg, "%r15w") ||
-        !strcmp(reg, "%si") || !strcmp(reg, "%di"))
+        !strcmp(reg, "%si") || !strcmp(reg, "%di")) {
         return 2;
+    }
 
     if (!strcmp(reg, "%al") || !strcmp(reg, "%bl") || !strcmp(reg, "%cl") || !strcmp(reg, "%dl") ||
         !strcmp(reg, "%r8b") || !strcmp(reg, "%r9b") || !strcmp(reg, "%r10b") || !strcmp(reg, "%r11b") ||
         !strcmp(reg, "%r12b") || !strcmp(reg, "%r13b") || !strcmp(reg, "%r14b") || !strcmp(reg, "%r15b") ||
-        !strcmp(reg, "%sil") || !strcmp(reg, "%dil"))
+        !strcmp(reg, "%sil") || !strcmp(reg, "%dil")) {
         return sizeof(char);
+    }
 
     return sizeof(unsigned long); // this is the 8-byte default
 }
@@ -398,26 +406,36 @@ int operands_check(char *source, char *destination, char type) {
 // this function returns the number of bytes to be touched by a given instruction
 int get_data_size(char *instruction, char *source, char *dest, char type) {
 
-    if (!strcmp(instruction, "movb"))
+    if (!strcmp(instruction, "movb")) {
         return sizeof(char);
-    if (!strcmp(instruction, "movl"))
+    }
+    if (!strcmp(instruction, "movl")) {
         return sizeof(int);
-    if (!strcmp(instruction, "movq"))
+    }
+    if (!strcmp(instruction, "movq")) {
         return sizeof(unsigned long);
-    if (!strcmp(instruction, "movss"))
+    }
+    if (!strcmp(instruction, "movss")) {
         return sizeof(float);
-    if (!strcmp(instruction, "movsd"))
+    }
+    if (!strcmp(instruction, "movsd")) {
         return sizeof(double);
-    if (!strcmp(instruction, "movzwl"))
+    }
+    if (!strcmp(instruction, "movzwl")) {
         return sizeof(float);
-    if (!strcmp(instruction, "movzbl"))
+    }
+    if (!strcmp(instruction, "movzbl")) {
         return sizeof(float);
-    if (!strcmp(instruction, "movzbw"))
+    }
+    if (!strcmp(instruction, "movzbw")) {
         return sizeof(int);
-    if (!strcmp(instruction, "movsbl"))
+    }
+    if (!strcmp(instruction, "movsbl")) {
         return sizeof(int);
-    if (!strcmp(instruction, "mov"))
+    }
+    if (!strcmp(instruction, "mov")) {
         return operands_check(source, dest, type);
+    }
 
     return -1; // unknown instruction
 }
@@ -449,8 +467,9 @@ int elf_parse(char **function_names, char *parsable_elf) {
     instructions = (instruction_record *)address;
 
     for (i = 0;; i++) { // counting functions to parse
-        if (function_names[i] == NULL)
+        if (function_names[i] == NULL) {
             break;
+        }
     }
     num_functions = i;
 
@@ -563,8 +582,9 @@ int elf_parse(char **function_names, char *parsable_elf) {
                         printf("instruction binary is %s\n", p);
                         instruction_len = 0;
                         for (j = 0; j < strlen(p); j++) {
-                            if (p[j] != ' ')
+                            if (p[j] != ' ') {
                                 instruction_len++;
+                            }
                         }
                         instruction_len >>= 1;
                         AUDIT
@@ -855,8 +875,9 @@ void find_intermediate_zones(char *parsable_elf) {
             break;
         }
         strtok(buffer, "\n");
-        if (strstr(buffer, "<_wrap_main>:"))
+        if (strstr(buffer, "<_wrap_main>:")) {
             goto out;
+        }
         if (strstr(buffer, "\tcli")) {
             AUDIT
             printf("found line with the cli instruction\n");

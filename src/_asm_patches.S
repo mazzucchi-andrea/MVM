@@ -45,11 +45,11 @@ the_patch_assembly:
 
 // CKPT ASM CODE
 ckpt_assembly:
+#if MOD == 64
         mov %rax, %gs:0x00
         mov %rbx, %gs:0x08
         lahf
         mov %ah, %gs:0x18
-#if MOD == 64
         mov %ecx, %eax
         and $0xffffffffffc00000, %rcx
         and $0x3fffff, %rax
@@ -86,13 +86,22 @@ second_qword:
         mov (%rcx, %rax, 8), %rbx
         mov %rbx, ALLOCATOR_AREA_SIZE(%rcx, %rax, 8)
 end_checkpoint:
-
+        mov %gs:0x18, %ah
+        sahf
+        mov %gs:0x10, %rcx
+        mov %gs:0x08, %rbx
+        mov %gs:0x00, %rax
+        
 #elif MOD == 128
+        mov %rax, %gs:0x00
+        mov %ebx, %gs:0x08
+        lahf
+        mov %ah, %gs:0x18
         movdqa %xmm1, %gs:0x20
         mov %ecx, %eax
         and $0xffffffffffc00000, %rcx
         and $0x3fffff, %rax
-        test $15,%ax
+        test $15,%al
         jz second_dqword
         and $0x7ffff0, %eax
         movdqa (%rcx, %rax,), %xmm1
@@ -129,8 +138,17 @@ second_dqword:
         movdqa %xmm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
 end_checkpoint:
         movdqa %gs:0x20, %xmm1
+        mov %gs:0x18, %ah
+        sahf
+        mov %gs:0x10, %rcx
+        mov %gs:0x08, %ebx
+        mov %gs:0x00, %rax
 
 #elif MOD == 256
+        mov %rax, %gs:0x00
+        mov %ebx, %gs:0x08
+        lahf
+        mov %ah, %gs:0x18
         vmovdqa %ymm1, %gs:0x20
         mov %ecx, %eax
         and $0xffffffffffc00000, %rcx
@@ -172,8 +190,17 @@ second_256bit:
         vmovdqa %ymm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
 end_checkpoint:
         vmovdqa %gs:0x20, %ymm1
+        mov %gs:0x18, %ah
+        sahf
+        mov %gs:0x10, %rcx
+        mov %gs:0x08, %ebx
+        mov %gs:0x00, %rax
 
 #elif MOD == 512
+        mov %rax, %gs:0x00
+        mov %ebx, %gs:0x08
+        lahf
+        mov %ah, %gs:0x18
         vmovdqa64 %zmm1,%gs:0x40
 	mov %ecx, %eax
         and $0xffffffffffc00000, %rcx
@@ -215,11 +242,11 @@ second_512bit:
         vmovdqa64 %zmm1, ALLOCATOR_AREA_SIZE(%rcx, %rax,)
 end_checkpoint:
         vmovdqa64 %gs:0x40, %zmm1
+        mov %gs:0x18, %ah
+        sahf
+        mov %gs:0x10, %rcx
+        mov %gs:0x08, %ebx
+        mov %gs:0x00, %rax
 #else
 #error "Valid MODs are 64, 128, 256, and 512."
 #endif
-        mov %gs:0x18, %ah
-        sahf
-        mov %gs:0x00, %rax
-        mov %gs:0x08, %rbx
-        mov %gs:0x10, %rcx
