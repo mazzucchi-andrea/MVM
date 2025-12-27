@@ -7,7 +7,7 @@ APP_OBJ = $(APP)/prog.o
 #TARGET_MODULES= a.c  sub-dir/b.c this is an example usage
 TARGET_MODULES= prog.c
 #TARGET_FUNCTIONS="<a>:","<b>:" this is an example usage
-TARGET_FUNCTIONS="<test_checkpoint_not_aligned>:","<test_checkpoint_aligned>:"
+TARGET_FUNCTIONS="<test_checkpoint_not_aligned>:","<test_checkpoint_aligned>:","<test_checkpoint_random>:","<test_fill_area>:"
 LIBS =
 
 INCLUDE = $(PWD)/include
@@ -44,7 +44,7 @@ ADDITIONAL_FLAGS = -O3 -DCKPT -DAPPLY_PATCHES -DVERBOSE
 #the VERBOSE macro simply leads to the massive production of output messages 
 
 #CKPT FLAGS
-ALLOCATOR_AREA_SIZE=0x100000UL
+ALLOCATOR_AREA_SIZE=0x100000
 MOD=64
 
 THE_VM = -DVM_NAME=\"MVM\"
@@ -83,7 +83,6 @@ asm-patch:
 
 patch:
 	cd ./patches; gcc patches.c -c -I$(INCLUDE) $(THE_VM) $(UDTEMPDIR) $(UDTEMPFILE) $(UDTEMPOBJ) $(SECURITY_FLAGS) $(ADDITIONAL_FLAGS) -o $(OBJ)/_patches.o
-#please rember to insert whatever Makefile in the user-defined directory
 	cd $(USER_DEFINED); make
 
 movm: base head startup asm-patch patch ckpt

@@ -159,11 +159,18 @@ void user_defined(instruction_record *actual_instruction, patch *actual_patch) {
 void ckpt_patch(instruction_record *actual_instruction, patch *actual_patch) {
     int fd;
     int ret;
-    u_int8_t instructions[9] = {0x65, 0x48, 0x89, 0x0c, 0x25, 0x10, 0x00, 0x00, 0x00}; // mov %rcx, %gs:0x10
-    memcpy(actual_patch->code, (void *)instructions, 9);
-    actual_instruction->instrumentation_instructions += 1;
-    sprintf(buffer, "lea %s, %%rcx\n", actual_instruction->dest);
-    AUDIT printf("Load the store's address into rcx: %s", buffer);
+    // save the regs and the eflags before using in instrumentation
+    u_int8_t instructions[36] = {
+        0x65, 0x48, 0x89, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00,           // mov %rax, %gs:0x00
+        0x65, 0x48, 0x89, 0x1c, 0x25, 0x08, 0x00, 0x00, 0x00,   // mov %rbx, %gs:0x08
+        0x9f,                                                                                          // lahf
+        0x65, 0x66, 0x89, 0x0c, 0x25, 0x10, 0x00, 0x00, 0x00,   // mov    %cx,%gs:0x10
+        0x65, 0x88, 0x24, 0x25, 0x14, 0x00, 0x00, 0x00              // mov    %ah,%gs:0x14
+    };
+    memcpy(actual_patch->code, (void *)instructions, 36);
+
+    sprintf(buffer, "lea %s, %%rbx\n", actual_instruction->dest);
+    AUDIT printf("Load the store's address into rbx: %s", buffer);
     fd = open(user_defined_temp_file, O_CREAT | O_TRUNC | O_RDWR, 0666);
     if (fd == -1) {
         printf("%s: error opening temp file %s\n", VM_NAME, user_defined_temp_file);
@@ -198,7 +205,7 @@ void ckpt_patch(instruction_record *actual_instruction, patch *actual_patch) {
         exit(EXIT_FAILURE);
     }
 
-    memcpy((actual_patch->code) + 9, buffer, ret);
+    memcpy((actual_patch->code) + 36, buffer, ret);
     actual_instruction->instrumentation_instructions += 1;
 
     close(fd);
