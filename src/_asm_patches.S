@@ -55,20 +55,30 @@ the_patch_assembly:
 #else
 #error "Valid MODs are 64, 128, 256, and 512."
 #endif
+
 ckpt_assembly:
         mov $1, %ch
         mov %ebx, %eax
-        and $0xffffffffffc00000, %rbx
+        and $(~(ALLOCATOR_AREA_SIZE - 1)), %rbx
+#if MOD == 64
         test $7,%al
         jz aligned_qword
-        and $0x3ffff8,%rax
-#if MOD == 64
+        and $(ALLOCATOR_AREA_SIZE-8),%rax
         shr $3, %eax
 #elif MOD == 128
+        test $15,%al
+        jz aligned_qword
+        and $(ALLOCATOR_AREA_SIZE-16), %rax
         shr $4, %eax
 #elif MOD == 256
+        test $31,%al
+        jz aligned_qword
+        and $(ALLOCATOR_AREA_SIZE-32),%rax
         shr $5, %eax
-#else
+#elif MOD == 512
+        test $63, %al
+        jz aligned_qword
+        and $(ALLOCATOR_AREA_SIZE-64), %rax
         shr $6, %eax
 #endif
         mov %al, %cl
@@ -88,7 +98,7 @@ next_bitmap_byte:
         or %ch, (2 * ALLOCATOR_AREA_SIZE)(%rbx, %rax, 1)
         jmp end_checkpoint
 aligned_qword:
-        and $0x3fffff, %rax
+        and $(ALLOCATOR_AREA_SIZE - 1), %rax
 #if MOD == 64
         shr $3, %eax
 #elif MOD == 128
