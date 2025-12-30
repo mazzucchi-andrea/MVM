@@ -60,25 +60,16 @@ ckpt_assembly:
         mov $1, %ch
         mov %ebx, %eax
         and $(~(ALLOCATOR_AREA_SIZE - 1)), %rbx
-#if MOD == 64
-        test $7,%al
+        test $(MOD/8 - 1),%al
         jz aligned_qword
-        and $(ALLOCATOR_AREA_SIZE-8),%rax
+        and $(ALLOCATOR_AREA_SIZE - MOD/8),%rax
+#if MOD == 64        
         shr $3, %eax
 #elif MOD == 128
-        test $15,%al
-        jz aligned_qword
-        and $(ALLOCATOR_AREA_SIZE-16), %rax
         shr $4, %eax
 #elif MOD == 256
-        test $31,%al
-        jz aligned_qword
-        and $(ALLOCATOR_AREA_SIZE-32),%rax
         shr $5, %eax
 #elif MOD == 512
-        test $63, %al
-        jz aligned_qword
-        and $(ALLOCATOR_AREA_SIZE-64), %rax
         shr $6, %eax
 #endif
         mov %al, %cl
