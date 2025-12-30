@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <immintrin.h> // AVX
 #include <linux/limits.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -15,57 +16,15 @@
 #include "ckpt_setup.h"
 
 /* Initialize the area with the given quadword */
-void init_area(void *area, int64_t init_value) {
+void init_area(u_int8_t *area, int64_t init_value) {
     for (int i = 0; i < (ALLOCATOR_AREA_SIZE - 8); i += 8) {
         *(int64_t *)(area + i) = init_value;
     }
 }
 
-double test_checkpoint_aligned(void *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
+double test_checkpoint(u_int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads, int offset_increment) {
     int offset = 0;
-    int64_t read_value;
-    clock_t begin, end;
-    double time_spent;
-
-    begin = clock();
-    _set_ckpt(area);
-    for (int i = 0; i < numberOfWrites; i++) {
-        offset %= (ALLOCATOR_AREA_SIZE - 8 + 1);
-        *(int64_t *)(area + offset) = new_value;
-#if MOD == 64
-        offset += 8;
-#elif MOD == 128
-        offset += 16;
-#elif MOD == 256
-        offset += 32;
-#else
-        offset += 64;
-#endif
-    }
-    for (int i = 0; i < numberOfReads; i++) {
-        offset %= (ALLOCATOR_AREA_SIZE - 8 + 1);
-        read_value = *(int64_t *)(area + offset);
-#if MOD == 64
-        offset += 8;
-#elif MOD == 128
-        offset += 16;
-#elif MOD == 256
-        offset += 32;
-#else
-        offset += 64;
-#endif
-    }
-    end = clock();
-
-    time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    return time_spent;
-}
-
-/* Save original values and set the bitarray bit before writing the new value
- * and read */
-double test_checkpoint_not_aligned(void *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
-    int offset = 0;
-    int64_t read_value;
+    __attribute__((unused)) int64_t read_value;
     clock_t begin, end;
     double time_spent;
 
@@ -74,12 +33,12 @@ double test_checkpoint_not_aligned(void *area, int64_t new_value, int numberOfWr
     for (int i = 0; i < numberOfWrites; i++) {
         offset %= (ALLOCATOR_AREA_SIZE - 8);
         *(int64_t *)(area + offset) = new_value;
-        offset += 4;
+        offset += offset_increment;
     }
     for (int i = 0; i < numberOfReads; i++) {
         offset %= (ALLOCATOR_AREA_SIZE - 8);
         read_value = *(int64_t *)(area + offset);
-        offset += 4;
+        offset += offset_increment;
     }
     end = clock();
 
@@ -87,9 +46,9 @@ double test_checkpoint_not_aligned(void *area, int64_t new_value, int numberOfWr
     return time_spent;
 }
 
-double test_checkpoint_random(void *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
+double test_checkpoint_random(u_int8_t *area, int64_t new_value, int numberOfWrites, int numberOfReads) {
     int offset;
-    int64_t read_value;
+    __attribute__((unused)) int64_t read_value;
     clock_t begin, end;
     double time_spent;
     srand(42);
@@ -97,11 +56,11 @@ double test_checkpoint_random(void *area, int64_t new_value, int numberOfWrites,
     begin = clock();
     _set_ckpt(area);
     for (int i = 0; i < numberOfWrites; i++) {
-        offset = rand() % (ALLOCATOR_AREA_SIZE - 7);
+        offset = rand() % (ALLOCATOR_AREA_SIZE - 8);
         *(int64_t *)(area + offset) = new_value;
     }
     for (int i = 0; i < numberOfReads; i++) {
-        offset = rand() % (ALLOCATOR_AREA_SIZE - 7);
+        offset = rand() % (ALLOCATOR_AREA_SIZE - 8);
         read_value = *(int64_t *)(area + offset);
     }
     end = clock();
@@ -110,7 +69,7 @@ double test_checkpoint_random(void *area, int64_t new_value, int numberOfWrites,
     return time_spent;
 }
 
-void test_fill_area(void *area, int32_t value_32bit, int64_t value_64bit) {
+void test_fill_area(u_int8_t *area, int32_t value_32bit, int64_t value_64bit) {
     _set_ckpt(area);
     for (int i = 0; i < ALLOCATOR_AREA_SIZE; i += 8) {
         *(int64_t *)(area + i) = value_64bit;
@@ -123,10 +82,10 @@ void test_fill_area(void *area, int32_t value_32bit, int64_t value_64bit) {
     }
 }
 
-double restore_area_test(void *area) {
-    void *bitarray = area + 2 * ALLOCATOR_AREA_SIZE;
-    void *src = area + ALLOCATOR_AREA_SIZE;
-    void *dst = area;
+double restore_area_test(u_int8_t *area) {
+    u_int8_t *bitarray = area + 2 * ALLOCATOR_AREA_SIZE;
+    u_int8_t *src = area + ALLOCATOR_AREA_SIZE;
+    u_int8_t *dst = area;
     u_int16_t current_word;
     int target_offset;
     clock_t begin, end;
@@ -172,86 +131,105 @@ double restore_area_test(void *area) {
     return time_spent;
 }
 
-/* Verify that the set bits correspond to the correctly saved quadwords. */
-int verify_bitmap(void *area, void *init_A_copy) {
-    void *bitarray = area + ALLOCATOR_AREA_SIZE * 2;
-    void *areaS = area + ALLOCATOR_AREA_SIZE;
-    for (int offset = 0; offset < BITMAP_SIZE; offset += 2) {
-        u_int16_t current_word = *(u_int16_t *)(bitarray + offset);
-        if (current_word == 0) {
-            continue;
+int verify_bitmap(u_int8_t *area, int numberOfWrites, int offset_increment) {
+    u_int8_t *bitmap = area + ALLOCATOR_AREA_SIZE * 2;
+    int offset = 0;
+    for (int i = 0; i < numberOfWrites; i++) {
+        offset %= (ALLOCATOR_AREA_SIZE - 8);
+        int working_offset = offset;
+        int8_t bit_index;
+        u_int8_t bitmap_byte;
+        u_int8_t bitmask = 1;
+        if (working_offset % (MOD / 8 - 1)) { // not aligned
+            working_offset &= (ALLOCATOR_AREA_SIZE - MOD / 8);
+            working_offset = working_offset >> (int)(log2(MOD / 8));
+            bit_index = working_offset % 7;
+            working_offset = working_offset >> 3;
+            bitmap_byte = *(u_int8_t *)(bitmap + working_offset);
+            bitmask = bitmask << bit_index;
+            if (!(bitmask && bitmap_byte)) {
+                fprintf(stderr, "Bit %d not set at bitmap offset %d\n", bit_index, working_offset);
+                return -1;
+            }
+            if (bit_index == 7) {
+                working_offset += 1;
+                bitmask = 1;
+                bit_index = 0;
+            } else {
+                bit_index += 1;
+                bitmask = bitmask << 1;
+            }
+            bitmap_byte = *(u_int8_t *)(bitmap + working_offset);
+            if (!(bitmask && bitmap_byte)) {
+                fprintf(stderr, "Bit %d not set at bitmap offset %d\n", bit_index, working_offset);
+                return -1;
+            }
+        } else { // aligned
+            working_offset = working_offset >> (int)(log2(MOD / 8));
+            bit_index = working_offset % 7;
+            working_offset = working_offset >> 3;
+            bitmap_byte = *(u_int8_t *)(bitmap + working_offset);
+            bitmask = bitmask << bit_index;
+            if (!(bitmask && bitmap_byte)) {
+                fprintf(stderr, "Bit %d not set at bitmap offset %d\n", bit_index, working_offset);
+                return -1;
+            }
         }
-        for (int k = 0; k < 16; k++) {
-            if ((current_word >> k) & 1) {
-#if MOD == 64
-                int target_offset = (offset * 8 + k) * 8;
-                if (*(u_int64_t *)(init_A_copy + target_offset) != *(u_int64_t *)(areaS + target_offset)) {
-                    fprintf(stderr,
-                            "Checkpoint verify failed:\n"
-                            "Word Offset 0x%x\n"
-                            "Target Offeset 0x%x\n"
-                            "Area S value: 0x%lx\n"
-                            "Area A init Value: 0x%lx\n",
-                            offset, target_offset, *(u_int64_t *)(areaS + target_offset),
-                            *(u_int64_t *)(init_A_copy + target_offset));
-                    return -1;
-                }
-#elif MOD == 128
-                int target_offset = (offset * 8 + k) * 16;
-                if (memcmp(init_A_copy + target_offset, areaS + target_offset, 16)) {
-                    fprintf(stderr,
-                            "Checkpoint verify failed:\n"
-                            "BitArray Word Offset: 0x%x\n"
-                            "Bit: %d\n"
-                            "Target Offset: %d\n"
-                            "Area S Value: First qword: 0x%lx Second qword: 0x%lx\n"
-                            "Area A init Value First qword: 0x%lx Second qword: "
-                            "0x%lx\n",
-                            offset, k, target_offset, *(int64_t *)(areaS + target_offset),
-                            *(int64_t *)(areaS + target_offset + 8), *(int64_t *)(init_A_copy + target_offset),
-                            *(int64_t *)(init_A_copy + target_offset + 8));
-                    return -1;
-                }
-#elif MOD == 256
-                int target_offset = (offset * 8 + k) * 32;
-                if (memcmp(init_A_copy + target_offset, areaS + target_offset, 32)) {
-                    fprintf(stderr,
-                            "Checkpoint verify failed:\n"
-                            "BitArray Word Offset: 0x%x\n"
-                            "Bit: %d\n"
-                            "Target Offset: %d\n"
-                            "Area S Value: First qword: 0x%lx Second qword: "
-                            "0x%lx Third qword: 0x%lx Fourth qword: 0x%lx\n"
-                            "Area A init Value First qword: 0x%lx Second "
-                            "qword: 0x%lx Third qword: 0x%lx Fourth qword: "
-                            "0x%lx\n",
-                            offset, k, target_offset, *(int64_t *)(areaS + target_offset),
-                            *(int64_t *)(areaS + target_offset + 8), *(int64_t *)(areaS + target_offset + 16),
-                            *(int64_t *)(areaS + target_offset + 24), *(int64_t *)(init_A_copy + target_offset),
-                            *(int64_t *)(init_A_copy + target_offset + 8),
-                            *(int64_t *)(init_A_copy + target_offset + 16),
-                            *(int64_t *)(init_A_copy + target_offset + 24));
-                    return -1;
-                }
-#else
-                int target_offset = (offset * 8 + k) * 64;
-                if (memcmp(init_A_copy + target_offset, areaS + target_offset, 64)) {
-                    fprintf(stderr,
-                            "Checkpoint verify failed:\n"
-                            "BitArray Word Offset: 0x%x\n"
-                            "Bit: %d\n"
-                            "Target Offset: %d\n",
-                            offset, k, target_offset);
-                    return -1;
-                }
-#endif
+        offset += offset_increment;
+    }
+    return 0;
+}
+
+int verify_bitmap_random(u_int8_t *area, int numberOfWrites) {
+    u_int8_t *bitmap = area + ALLOCATOR_AREA_SIZE * 2;
+    int offset = 0;
+    srand(42);
+    for (int i = 0; i < numberOfWrites; i++) {
+        offset = rand() % (ALLOCATOR_AREA_SIZE - 8);
+        int working_offset = offset;
+        int8_t bit_index;
+        u_int8_t bitmap_byte;
+        u_int8_t bitmask = 1;
+        if (working_offset % (MOD / 8 - 1)) { // not aligned
+            working_offset &= (ALLOCATOR_AREA_SIZE - MOD / 8);
+            working_offset = working_offset >> (int)(log2(MOD / 8));
+            bit_index = working_offset % 7;
+            working_offset = working_offset >> 3;
+            bitmap_byte = *(u_int8_t *)(bitmap + working_offset);
+            bitmask = bitmask << bit_index;
+            if (!(bitmask && bitmap_byte)) {
+                fprintf(stderr, "Bit %d not set at bitmap offset %d\n", bit_index, working_offset);
+                return -1;
+            }
+            if (bit_index == 7) {
+                working_offset += 1;
+                bitmask = 1;
+                bit_index = 0;
+            } else {
+                bit_index += 1;
+                bitmask = bitmask << 1;
+            }
+            bitmap_byte = *(u_int8_t *)(bitmap + working_offset);
+            if (!(bitmask && bitmap_byte)) {
+                fprintf(stderr, "Bit %d not set at bitmap offset %d\n", bit_index, working_offset);
+                return -1;
+            }
+        } else { // aligned
+            working_offset = working_offset >> (int)(log2(MOD / 8));
+            bit_index = working_offset % 7;
+            working_offset = working_offset >> 3;
+            bitmap_byte = *(u_int8_t *)(bitmap + working_offset);
+            bitmask = bitmask << bit_index;
+            if (!(bitmask && bitmap_byte)) {
+                fprintf(stderr, "Bit %d not set at bitmap offset %d\n", bit_index, working_offset);
+                return -1;
             }
         }
     }
     return 0;
 }
 
-void clean_cache(void *area) {
+void clean_cache(u_int8_t *area) {
     int cache_line_size = __builtin_cpu_supports("sse2") ? 64 : 32;
     for (int i = 0; i < (2 * ALLOCATOR_AREA_SIZE + BITMAP_SIZE); i += (cache_line_size / 8)) {
         _mm_clflush(area + i);
@@ -301,16 +279,17 @@ int main(int argc, char *argv[]) {
 
     unsigned long base_addr = 8UL * 1024UL * ALLOCATOR_AREA_SIZE;
     size_t size = 2UL * ALLOCATOR_AREA_SIZE + BITMAP_SIZE;
-    void *area = mmap((void *)base_addr, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, 0, 0);
+    u_int8_t *area = (u_int8_t *)mmap((void *)base_addr, size, PROT_READ | PROT_WRITE,
+                                      MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, 0, 0);
     if (area == MAP_FAILED) {
         perror("mmap failed");
         return errno;
     }
 
     printf("BaseA: %p\n", area);
-    printf("BaseS: %p\n", (void *)(area + ALLOCATOR_AREA_SIZE));
-    printf("BaseM: %p\n", area + 2 * ALLOCATOR_AREA_SIZE);
-    printf("Bitarray Size: 0x%lx\n\n", BITMAP_SIZE);
+    printf("BaseS: %p\n", (u_int8_t *)(area + ALLOCATOR_AREA_SIZE));
+    printf("BaseM: %p\n", (u_int8_t *)(area + 2 * ALLOCATOR_AREA_SIZE));
+    printf("Bitarray Size: 0x%x\n\n", BITMAP_SIZE);
 
     init_area(area, init_value);
 
@@ -320,9 +299,8 @@ int main(int argc, char *argv[]) {
 
     printf("Test Checkpoint with aligned writes and read\n");
     for (int i = 0; i < 256; i++) {
-        wr_time += test_checkpoint_aligned(area, value_64bit, numberOfWrites, numberOfReads);
-        if (verify_bitmap(area, area + ALLOCATOR_AREA_SIZE)) {
-
+        wr_time += test_checkpoint(area, value_64bit, numberOfWrites, numberOfReads, MOD / 8);
+        if (verify_bitmap(area, numberOfWrites, MOD / 8)) {
             return EXIT_FAILURE;
         }
         restore_time += restore_area_test(area);
@@ -342,9 +320,8 @@ int main(int argc, char *argv[]) {
     printf("Test Checkpoint with not aligned writes and reads\n");
 
     for (int i = 0; i < 256; i++) {
-        wr_time += test_checkpoint_not_aligned(area, value_64bit, numberOfWrites, numberOfReads);
-        if (verify_bitmap(area, area + ALLOCATOR_AREA_SIZE)) {
-
+        wr_time += test_checkpoint(area, value_64bit, numberOfWrites, numberOfReads, 4);
+        if (verify_bitmap(area, numberOfWrites, 4)) {
             return EXIT_FAILURE;
         }
         restore_time += restore_area_test(area);
@@ -365,7 +342,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < 256; i++) {
         wr_time += test_checkpoint_random(area, value_64bit, numberOfWrites, numberOfReads);
-        if (verify_bitmap(area, area + ALLOCATOR_AREA_SIZE)) {
+        if (verify_bitmap_random(area, numberOfWrites)) {
             return EXIT_FAILURE;
         }
         restore_time += restore_area_test(area);
@@ -381,10 +358,7 @@ int main(int argc, char *argv[]) {
     clean_cache(area);
 
     test_fill_area(area, value_32bit, value_64bit);
-    if (verify_bitmap(area, area + ALLOCATOR_AREA_SIZE)) {
-        return EXIT_FAILURE;
-    }
-    restore_area_test(area);
+    _restore_area(area);
     ret = memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE);
     if (ret) {
         fprintf(stderr, "Area A restore after fill test check failed: 0x%x\n", ret);
@@ -392,5 +366,6 @@ int main(int argc, char *argv[]) {
     }
 
     printf("Test Passed\n");
+
     return EXIT_SUCCESS;
 }

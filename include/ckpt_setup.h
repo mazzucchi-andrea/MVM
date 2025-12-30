@@ -1,6 +1,8 @@
 #ifndef _CKPT_SETUP_
 #define _CKPT_SETUP_
 
+#include <sys/types.h>
+
 #ifndef MOD
 #define MOD 64
 #endif
@@ -23,7 +25,7 @@
 
 void _tls_setup();
 
-void _restore_area(void *);
+void _restore_area(u_int8_t *);
 
 void _set_ckpt(void *);
 

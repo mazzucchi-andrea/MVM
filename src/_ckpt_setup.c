@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <sys/mman.h>
+#include <sys/types.h>
 
 #include "ckpt_setup.h"
 
@@ -24,10 +25,10 @@ void _tls_setup() {
     }
 }
 
-void _restore_area(void *area) {
-    void *bitarray = area + 2 * ALLOCATOR_AREA_SIZE;
-    void *src = area + ALLOCATOR_AREA_SIZE;
-    void *dst = area;
+void _restore_area(u_int8_t *area) {
+    u_int8_t *bitarray = area + 2 * ALLOCATOR_AREA_SIZE;
+    u_int8_t *src = area + ALLOCATOR_AREA_SIZE;
+    u_int8_t *dst = area;
     u_int16_t current_word;
     int target_offset;
 
