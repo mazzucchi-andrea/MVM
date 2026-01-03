@@ -10,6 +10,7 @@ void setup_memory_access_rules(void);
 void the_patch_assembly(void);
 
 void ckpt_assembly(void);
+void dummy_ckpt(void);
 
 void the_patch(unsigned long, unsigned long);
 

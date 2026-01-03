@@ -114,7 +114,9 @@ void build_patches(void) {
 
 #if CKPT
     uint64_t ckpt_code = (uint64_t)ckpt_assembly;
-    int ckpt_code_size = 0x89; // this is taken from the compiled version of the src/_asm_patch.S file
+    size_t ckpt_code_size = (uintptr_t)dummy_ckpt - (uintptr_t)ckpt_assembly;
+    ;
+    printf("ckpt_code_size %lx\n", ckpt_code_size);
 #endif
 
     patches = (patch *)address1;

@@ -1,5 +1,6 @@
 .global the_patch_assembly;
 .global ckpt_assembly;
+.global dummy_ckpt;
 
 .section .text;
 
@@ -44,34 +45,38 @@ the_patch_assembly:
 	lea 0x1000(%rsp),%rsp
 
 // CKPT ASM CODE
-#if MOD == 64
-#define BITMAP_SIZE (ALLOCATOR_AREA_SIZE / 8) / 8
-#elif MOD == 128
-#define BITMAP_SIZE (ALLOCATOR_AREA_SIZE / 16) / 8
-#elif MOD == 256
-#define BITMAP_SIZE (ALLOCATOR_AREA_SIZE / 32) / 8
-#elif MOD == 512
-#define BITMAP_SIZE (ALLOCATOR_AREA_SIZE / 64) / 8
-#else
-#error "Valid MODs are 64, 128, 256, and 512."
-#endif
+#define LOG2_1 0
+#define LOG2_2 1
+#define LOG2_4 2
+#define LOG2_8 3
+#define LOG2_16 4
+#define LOG2_32 5
+#define LOG2_64 6
+#define LOG2_128 7
+#define LOG2_256 8
+#define LOG2_512 9
+#define LOG2_1024 10
+#define LOG2_2048 11
+#define LOG2_4096 12
+#define LOG2_8192 13
+#define LOG2_16384 14
+#define LOG2_32768 15
+#define LOG2_65536 16
+
+// Helper macro to concatenate and evaluate
+#define LOG2_EVAL(x) LOG2_##x
+#define LOG2(x) LOG2_EVAL(x)
+
+#define BITMAP_SIZE (ALLOCATOR_AREA_SIZE / MOD) / 8
 
 ckpt_assembly:
         mov $1, %ch
         mov %ebx, %eax
         and $(~(ALLOCATOR_AREA_SIZE - 1)), %rbx
-        test $(MOD/8 - 1),%al
+        test $(MOD - 1),%ax
         jz aligned_qword
-        and $(ALLOCATOR_AREA_SIZE - MOD/8),%rax
-#if MOD == 64        
-        shr $3, %eax
-#elif MOD == 128
-        shr $4, %eax
-#elif MOD == 256
-        shr $5, %eax
-#elif MOD == 512
-        shr $6, %eax
-#endif
+        and $(ALLOCATOR_AREA_SIZE - MOD),%rax      
+        shr $(LOG2(MOD)), %eax
         mov %al, %cl
         and $7, %cl
         shr $3, %eax
@@ -90,15 +95,7 @@ next_bitmap_byte:
         jmp end_checkpoint
 aligned_qword:
         and $(ALLOCATOR_AREA_SIZE - 1), %rax
-#if MOD == 64
-        shr $3, %eax
-#elif MOD == 128
-        shr $4, %eax
-#elif MOD == 256
-        shr $5, %eax
-#else
-        shr $6, %eax
-#endif
+        shr $(LOG2(MOD)), %eax
         mov %al, %cl
         and $7, %cl
         shr $3, %eax
@@ -110,3 +107,6 @@ end_checkpoint:
         sahf
         mov %gs:0x08, %rbx
         mov %gs:0x00, %rax
+
+dummy_ckpt:
+        nop

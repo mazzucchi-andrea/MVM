@@ -206,7 +206,6 @@ void ckpt_patch(instruction_record *actual_instruction, patch *actual_patch) {
     }
 
     memcpy((actual_patch->code) + 36, buffer, ret);
-    actual_instruction->instrumentation_instructions += 1;
 
     close(fd);
 }
