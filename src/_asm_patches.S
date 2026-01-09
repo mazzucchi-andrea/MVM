@@ -67,43 +67,62 @@ the_patch_assembly:
 #define LOG2_EVAL(x) LOG2_##x
 #define LOG2(x) LOG2_EVAL(x)
 
-#define BITMAP_SIZE (ALLOCATOR_AREA_SIZE / MOD) / 8
-
 ckpt_assembly:
-        mov $1, %ch
+ #if ALLOCATOR_AREA_SIZE <= 0xFFFFFFFF
         mov %ebx, %eax
+#else
+        mov %rbx, %rax
+#endif
         and $(~(ALLOCATOR_AREA_SIZE - 1)), %rbx
+#if MOD <= 0x100
+        test $(MOD - 1),%al
+#elif MOD <= 0x10000
         test $(MOD - 1),%ax
-        jz aligned_qword
+#elif MOD <= 0x100000000ULL
+        test $(MOD - 1),%eax
+#else
+        test $(MOD - 1),%rax
+#endif
+        jz aligned      
         and $(ALLOCATOR_AREA_SIZE - MOD),%rax      
+#if ALLOCATOR_AREA_SIZE <= 0xFFFFFFFF
         shr $(LOG2(MOD)), %eax
+#else
+        shr $(LOG2(MOD)), %rax
+#endif
         mov %al, %cl
         and $7, %cl
+#if ALLOCATOR_AREA_SIZE <= 0xFFFFFFFF
         shr $3, %eax
-        shl %cl, %ch
-        or %ch, (2 * ALLOCATOR_AREA_SIZE)(%rbx, %rax, 1)
-        shl $1, %ch
-        jc next_bitmap_byte
-        or %ch, (2 * ALLOCATOR_AREA_SIZE)(%rbx, %rax, 1)
+#else
+        shr $3, %rax
+#endif
+        add %rax, %rbx
+        mov $3, %ax
+        shl %cl, %ax
+        or %ax, (2 * ALLOCATOR_AREA_SIZE)(%rbx)
         jmp end_checkpoint
-next_bitmap_byte:           
-        add $1, %eax
-        mov $1, %ch
-        cmp $(BITMAP_SIZE), %eax
-        je end_checkpoint
-        or %ch, (2 * ALLOCATOR_AREA_SIZE)(%rbx, %rax, 1)
-        jmp end_checkpoint
-aligned_qword:
+aligned:
         and $(ALLOCATOR_AREA_SIZE - 1), %rax
+#if ALLOCATOR_AREA_SIZE <= 0xFFFFFFFF
         shr $(LOG2(MOD)), %eax
+#else
+        shr $(LOG2(MOD)), %rax
+#endif
         mov %al, %cl
         and $7, %cl
+#if ALLOCATOR_AREA_SIZE <= 0xFFFFFFFF
         shr $3, %eax
-        shl %cl, %ch
-        or %ch, (2 * ALLOCATOR_AREA_SIZE)(%rbx, %rax, 1)               
+#else
+        shr $3, %rax
+#endif
+        add %rax, %rbx
+        mov $1, %al
+        shl %cl, %al
+        or %al, (2 * ALLOCATOR_AREA_SIZE)(%rbx)
 end_checkpoint:
-        mov %gs:14, %ah
-        mov %gs:0x10, %cx
+        mov %gs:12, %ah
+        mov %gs:0x10, %cl
         sahf
         mov %gs:0x08, %rbx
         mov %gs:0x00, %rax

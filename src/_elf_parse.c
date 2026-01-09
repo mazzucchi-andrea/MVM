@@ -13,7 +13,7 @@
 
 void user_defined(instruction_record *, patch *);
 #if CKPT
-void ckpt_patch(instruction_record *, patch *);
+int ckpt_patch(instruction_record *, patch *);
 #endif
 
 uint64_t asl_randomization = 0;
@@ -106,15 +106,13 @@ uint64_t book_intermediate_target(uint64_t instruction_address,
 }
 
 void build_patches(void) {
-    int i;
     unsigned long size;
-    uint64_t instruction_address;
-    int jmp_displacement;
     char *jmp_target;
     char v[128]; // this hosts the jmp binary
-    int jmp_back_displacement;
+    int i, pos;
+    int jmp_displacement, jmp_back_displacement;
+    uint64_t instruction_address;
     uint64_t patch_address;
-    int pos;
     uint64_t effective_operand_address;
     uint64_t effective_operand_displacement;
     uint64_t intermediate_target;
@@ -126,6 +124,7 @@ void build_patches(void) {
 #if CKPT
     uint64_t ckpt_code = (uint64_t)ckpt_assembly;
     size_t ckpt_code_size = (uintptr_t)dummy_ckpt - (uintptr_t)ckpt_assembly;
+    size_t save_reg_lea;
 #endif
 
     patches = (patch *)address1;
@@ -197,13 +196,12 @@ void build_patches(void) {
 #endif
 
 #ifdef CKPT
-        memset((char *)(patches[i].code), 0x90, 46 + ckpt_code_size);
-        ckpt_patch(&instructions[i], &patches[i]);
+        //memset((char *)(patches[i].code), 0x90, 45 + ckpt_code_size);
+        save_reg_lea = ckpt_patch(&instructions[i], &patches[i]);
         patches[i].code =
             patches[i].code +
-            46; // 36 is the size of the structions need to save regs in GS and
-                // 10 is the maximum size of the lea instruction and 9 is the
-                // instruction to save rcx
+            save_reg_lea; // the size of the instructions needed to save regs in GS and
+                //the size of the lea instruction
         memcpy((char *)(patches[i].code), (char *)(ckpt_code), ckpt_code_size);
         patches[i].code = patches[i].code + ckpt_code_size;
 #endif
@@ -216,7 +214,7 @@ void build_patches(void) {
         // move again at the begin of the block of instructions forming the
         // patch NOTE: you will need to have patches[i].code point again to
         // patches[i].block before proceeding with the following if/else
-        patches[i].code = patches[i].code - 46 - ckpt_code_size;
+        patches[i].code = patches[i].code - save_reg_lea - ckpt_code_size;
 #endif
 
 #ifdef ASM_PREAMBLE
@@ -310,7 +308,7 @@ void build_patches(void) {
         // patches[i].code point to the copy of the original instruction - you
         // will need to step forward other preceeding instructions forming the
         // patch
-        patches[i].code = patches[i].code + 46 + ckpt_code_size;
+        patches[i].code = patches[i].code + save_reg_lea + ckpt_code_size;
 #endif
 
 #ifdef ASM_PREAMBLE
