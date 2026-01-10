@@ -1,11 +1,8 @@
-#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "elf_parse.h"
@@ -196,12 +193,11 @@ void build_patches(void) {
 #endif
 
 #ifdef CKPT
-        //memset((char *)(patches[i].code), 0x90, 45 + ckpt_code_size);
         save_reg_lea = ckpt_patch(&instructions[i], &patches[i]);
         patches[i].code =
-            patches[i].code +
-            save_reg_lea; // the size of the instructions needed to save regs in GS and
-                //the size of the lea instruction
+            patches[i].code + save_reg_lea; // the size of the instructions
+                                            // needed to save regs in GS and
+                                            // the size of the lea instruction
         memcpy((char *)(patches[i].code), (char *)(ckpt_code), ckpt_code_size);
         patches[i].code = patches[i].code + ckpt_code_size;
 #endif
@@ -1044,16 +1040,16 @@ out:
 int __real_main(int, char **);
 
 int __wrap_main(int argc, char **argv) {
-
     int ret;
     int i;
-    char *command;
+    // char *command;
 
     setup_memory_access_rules();
 
     asl_randomization = (unsigned long)elf_parse;
     AUDIT
-    printf("runtime address of elf_parse is %p\n", elf_parse);
+    printf("runtime address of elf_parse is %p\n",
+           (void *)(uintptr_t)elf_parse);
     asl_randomization =
         (unsigned long)((long)asl_randomization -
                         (long)find_elf_parse_compile_time_address(

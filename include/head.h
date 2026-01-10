@@ -1,5 +1,6 @@
 #ifndef _HEAD_
 #define _HEAD_
+
 #define PAGE 4096
 #define SIZE                                                                   \
     (PAGE << 4) // actual size of the head arrays with instructions, patches and

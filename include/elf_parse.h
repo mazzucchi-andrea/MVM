@@ -1,8 +1,9 @@
 #ifndef _ELF_PARSE_
 #define _ELF_PARSE_
 
-#include "head.h"
 #include <stdint.h>
+
+#include "head.h"
 
 #define TARGET_FUNCTIONS                                                       \
     128 // max number of functions to be checked for instrumentation
@@ -26,7 +27,7 @@ typedef struct _instruction_record {
     uint64_t address;
     unsigned long size;
     char indirect_jump;     //'y' or 'n' - this must be 'y' for any instruction
-                            //whose size is less than 5 bytes
+                            // whose size is less than 5 bytes
     uint64_t middle_buffer; // this is usefull only for intructions requiring
                             // indirect jumps - 0x0 should be the default
     char type;              // load 'l' or store 's'
