@@ -43,7 +43,6 @@ double test_checkpoint(uint8_t *area, int64_t new_value, int numberOfWrites,
     int offset = 0;
     __attribute__((unused)) int64_t read_value;
     clock_t begin, end;
-    double time_spent;
 
     begin = clock();
     _set_ckpt(area);
@@ -59,8 +58,7 @@ double test_checkpoint(uint8_t *area, int64_t new_value, int numberOfWrites,
     }
     end = clock();
 
-    time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    return time_spent;
+    return (double)(end - begin) / CLOCKS_PER_SEC;
 }
 
 double test_checkpoint_random(uint8_t *area, int64_t new_value,
@@ -68,7 +66,6 @@ double test_checkpoint_random(uint8_t *area, int64_t new_value,
     int offset;
     __attribute__((unused)) int64_t read_value;
     clock_t begin, end;
-    double time_spent;
     srand(42);
 
     begin = clock();
@@ -83,8 +80,7 @@ double test_checkpoint_random(uint8_t *area, int64_t new_value,
     }
     end = clock();
 
-    time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    return time_spent;
+    return (double)(end - begin) / CLOCKS_PER_SEC;
 }
 
 void test_fill_area(uint8_t *area, int32_t value_32bit, int64_t value_64bit) {
@@ -137,7 +133,7 @@ double restore_area_test(uint8_t *area) {
 #elif MOD == 64
                     __m512i ckpt_value =
                         _mm512_load_si512((void *)(src + target_offset));
-                    _mm512_storeu_si512((void *)(dst + target_offset),
+                    _mm512_store_si512((void *)(dst + target_offset),
                                         ckpt_value);
 #else
                     memcpy(dst + target_offset, src + target_offset, MOD);
@@ -301,7 +297,7 @@ void clean_cache(uint8_t *area) {
  */
 int main(int argc, char *argv[]) {
     char *endptr;
-    int numberOfWrites, numberOfReads, ret;
+    int numberOfWrites, numberOfReads;
     double wr_time = 0.0, restore_time = 0.0;
     int64_t init_value, value_64bit;
     int32_t value_32bit;
@@ -369,9 +365,8 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
         restore_time += restore_area_test(area);
-        ret = memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE);
-        if (ret) {
-            fprintf(stderr, "Area A restore check failed: 0x%x\n", ret);
+        if (memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE)) {
+            fprintf(stderr, "Area A restore check failed\n");
             return EXIT_FAILURE;
         }
     }
@@ -392,10 +387,9 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
         restore_time += restore_area_test(area);
-        ret = memcmp((void *)area, (void *)(area + ALLOCATOR_AREA_SIZE),
-                     ALLOCATOR_AREA_SIZE);
-        if (ret) {
-            fprintf(stderr, "Area A restore check failed: 0x%x\n", ret);
+        if (memcmp((void *)area, (void *)(area + ALLOCATOR_AREA_SIZE),
+                   ALLOCATOR_AREA_SIZE)) {
+            fprintf(stderr, "Area A restore check failed\n");
             return EXIT_FAILURE;
         }
     }
@@ -416,9 +410,8 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
         restore_time += restore_area_test(area);
-        ret = memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE);
-        if (ret) {
-            fprintf(stderr, "Area A restore check failed: 0x%x\n", ret);
+        if (memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE)) {
+            fprintf(stderr, "Area A restore check failed\n");
             return EXIT_FAILURE;
         }
     }
@@ -430,11 +423,9 @@ int main(int argc, char *argv[]) {
 
     test_fill_area(area, value_32bit, value_64bit);
     _restore_area(area);
-    ret = memcmp((void *)area, (void *)(area + ALLOCATOR_AREA_SIZE),
-                 ALLOCATOR_AREA_SIZE);
-    if (ret) {
-        fprintf(stderr, "Area A restore after fill test check failed: 0x%x\n",
-                ret);
+    if (memcmp((void *)area, (void *)(area + ALLOCATOR_AREA_SIZE),
+                 ALLOCATOR_AREA_SIZE)) {
+        fprintf(stderr, "Area A restore after fill test check failed\n");
         return EXIT_FAILURE;
     }
 
