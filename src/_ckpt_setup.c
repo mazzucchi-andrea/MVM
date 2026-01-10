@@ -1,12 +1,9 @@
 #include <asm/prctl.h>
-
 #include <immintrin.h> // AVX
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <sys/mman.h>
 
 #include "ckpt_setup.h"
@@ -71,8 +68,7 @@ void _restore_area(uint8_t *area) {
     memset(bitmap, 0, BITMAP_SIZE);
 }
 
-void _set_ckpt(void *area) {
-    memcpy((void *)(area + ALLOCATOR_AREA_SIZE), (void *)area,
-           ALLOCATOR_AREA_SIZE);
-    memset((void *)(area + 2 * ALLOCATOR_AREA_SIZE), 0, BITMAP_SIZE);
+void _set_ckpt(uint8_t *area) {
+    memcpy(area + ALLOCATOR_AREA_SIZE, area, ALLOCATOR_AREA_SIZE);
+    memset(area + 2 * ALLOCATOR_AREA_SIZE, 0, BITMAP_SIZE);
 }

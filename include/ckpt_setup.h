@@ -17,6 +17,6 @@ void _tls_setup();
 
 void _restore_area(uint8_t *);
 
-void _set_ckpt(void *);
+void _set_ckpt(uint8_t *);
 
 #endif
