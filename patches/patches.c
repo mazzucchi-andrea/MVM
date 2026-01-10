@@ -1,8 +1,8 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "elf_parse.h"
@@ -78,10 +78,7 @@ char buffer[1024];
 // skipping the instrumentatn of this instruction
 
 void user_defined(instruction_record *actual_instruction, patch *actual_patch) {
-
-    int fd;
-    int ret;
-    int i;
+    int fd, ret, i;
 
     // here is stuff used for instrumenting applications in "PARSIR ubiquitous"
     // it replicates memory updates that are executed on malloc-ed/mmap-ed
@@ -178,7 +175,7 @@ int ckpt_patch(instruction_record *actual_instruction, patch *actual_patch) {
         0x00,                                           // mov %rbx, %gs:0x08
         0x9f,                                           // lahf
         0x65, 0x88, 0x0c, 0x25, 0x10, 0x00, 0x00, 0x00, // mov %cl,%gs:0x10
-        0x65, 0x88, 0x24, 0x25, 0x12, 0x00, 0x00, 0x00  // mov %ah,%gs:0x14
+        0x65, 0x88, 0x24, 0x25, 0x14, 0x00, 0x00, 0x00  // mov %ah,%gs:0x14
     };
     memcpy(actual_patch->code, (void *)instructions, 35);
 

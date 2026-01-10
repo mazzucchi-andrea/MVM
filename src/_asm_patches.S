@@ -121,7 +121,7 @@ aligned:
         shl %cl, %al
         or %al, (2 * ALLOCATOR_AREA_SIZE)(%rbx)
 end_checkpoint:
-        mov %gs:12, %ah
+        mov %gs:14, %ah
         mov %gs:0x10, %cl
         sahf
         mov %gs:0x08, %rbx
