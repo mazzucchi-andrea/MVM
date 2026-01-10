@@ -7,7 +7,7 @@ APP_OBJ = $(APP)/prog.o
 #TARGET_MODULES= a.c  sub-dir/b.c this is an example usage
 TARGET_MODULES= prog.c
 #TARGET_FUNCTIONS="<a>:","<b>:" this is an example usage
-TARGET_FUNCTIONS="<test_checkpoint_not_aligned>:","<test_checkpoint_aligned>:"
+TARGET_FUNCTIONS="<test_checkpoint>:","<test_checkpoint_random>:","<test_fill_area>:"
 LIBS =
 
 INCLUDE = $(PWD)/include
@@ -32,7 +32,7 @@ UDTEMPDIR = -Duser_defined_dir=\"$(USER_DEFINED)\"
 UDTEMPFILE = -Duser_defined_temp_file=\"$(USER_DEFINED)/$(USER_DEFINED_FILE)\"
 UDTEMPOBJ = -Duser_defined_temp_obj_file=\"$(USER_DEFINED)/$(USER_DEFINED_OBJ_FILE)\"
 
-SECURITY_FLAGS = -pie -fPIE -fstack-protector-all
+SECURITY_FLAGS = -pie -fPIE -fstack-protector-all -fno-toplevel-reorder -fno-reorder-functions -fno-align-functions
 
 ADDITIONAL_FLAGS = -O3 -DCKPT -DAPPLY_PATCHES -DVERBOSE
 
@@ -44,8 +44,8 @@ ADDITIONAL_FLAGS = -O3 -DCKPT -DAPPLY_PATCHES -DVERBOSE
 #the VERBOSE macro simply leads to the massive production of output messages 
 
 #CKPT FLAGS
-ALLOCATOR_AREA_SIZE=0x100000UL
-MOD=64
+ALLOCATOR_AREA_SIZE=0x100000
+MOD=8
 
 THE_VM = -DVM_NAME=\"MVM\"
 

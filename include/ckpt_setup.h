@@ -4,29 +4,23 @@
 #include <stdint.h>
 
 #ifndef MOD
-#define MOD 64
+#define MOD 8
 #endif
 
 #ifndef ALLOCATOR_AREA_SIZE
-#define ALLOCATOR_AREA_SIZE 0x100000UL
+#define ALLOCATOR_AREA_SIZE 0x100000
 #endif
 
-#if MOD == 64
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 8) / 8
-#elif MOD == 128
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 16) / 8
-#elif MOD == 256
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 32) / 8
-#elif MOD == 512
-#define BITARRAY_SIZE (ALLOCATOR_AREA_SIZE / 64) / 8
+#if MOD == 8 || MOD == 16 || MOD == 32 || MOD == 64
+#define BITMAP_SIZE (ALLOCATOR_AREA_SIZE / MOD) / 8
 #else
-#error "Valid MODs are 64, 128, 256, and 512."
+#error "Valid MODs are 8, 16, 32, and 64."
 #endif
 
 void _tls_setup();
 
-void _restore_area(u_int8_t *);
+void _restore_area(uint8_t *);
 
-void _set_ckpt(u_int8_t *);
+void _set_ckpt(uint8_t *);
 
 #endif
