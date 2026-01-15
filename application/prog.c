@@ -96,58 +96,6 @@ void test_fill_area(uint8_t *area, int32_t value_32bit, int64_t value_64bit) {
     }
 }
 
-double restore_area_test(uint8_t *area) {
-    uint8_t *bitmap = (uint8_t *)(area + 2 * ALLOCATOR_AREA_SIZE);
-    uint8_t *src = (uint8_t *)(area + ALLOCATOR_AREA_SIZE);
-    uint8_t *dst = area;
-    uint8_t current_byte;
-    int target_offset;
-    clock_t begin, end;
-
-    begin = clock();
-    for (int offset = 0; offset < BITMAP_SIZE - 1; offset += 8) {
-        if (*(uint64_t *)(bitmap + offset) == 0) {
-            continue;
-        }
-        for (int i = 0; i < 8; i++) {
-            current_byte = *(uint8_t *)(bitmap + offset + i);
-            if (current_byte == 0) {
-                continue;
-            }
-            for (int k = 0; k < 8; k++) {
-                if (((current_byte >> k) & 1) == 1) {
-                    target_offset = ((offset + i) * 8 + k) * MOD;
-#if MOD == 8
-                    *(uint64_t *)(dst + target_offset) =
-                        *(uint64_t *)(src + target_offset);
-#elif MOD == 16
-                    __m128i ckpt_value =
-                        _mm_load_si128((__m128i *)(src + target_offset));
-                    _mm_store_si128((__m128i *)(dst + target_offset),
-                                    ckpt_value);
-#elif MOD == 32
-                    __m256i ckpt_value =
-                        _mm256_load_si256((__m256i *)(src + target_offset));
-                    _mm256_store_si256((__m256i *)(dst + target_offset),
-                                       ckpt_value);
-#elif MOD == 64
-                    __m512i ckpt_value =
-                        _mm512_load_si512((void *)(src + target_offset));
-                    _mm512_store_si512((void *)(dst + target_offset),
-                                        ckpt_value);
-#else
-                    memcpy(dst + target_offset, src + target_offset, MOD);
-#endif
-                }
-            }
-        }
-    }
-    memset(bitmap, 0, BITMAP_SIZE);
-    end = clock();
-
-    return (double)(end - begin) / CLOCKS_PER_SEC;
-}
-
 int verify_bitmap(uint8_t *area, int numberOfWrites, int offset_increment) {
     uint8_t *bitmap = (uint8_t *)(area + ALLOCATOR_AREA_SIZE * 2);
     int offset = 0;
@@ -299,6 +247,7 @@ int main(int argc, char *argv[]) {
     char *endptr;
     int numberOfWrites, numberOfReads;
     double wr_time = 0.0, restore_time = 0.0;
+    clock_t begin, end;
     int64_t init_value, value_64bit;
     int32_t value_32bit;
 
@@ -364,7 +313,10 @@ int main(int argc, char *argv[]) {
         if (verify_bitmap(area, numberOfWrites, MOD)) {
             return EXIT_FAILURE;
         }
-        restore_time += restore_area_test(area);
+        begin = clock();
+        _restore_area(area);
+        end = clock();
+        restore_time += (double)(end - begin) / CLOCKS_PER_SEC;
         if (memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE)) {
             fprintf(stderr, "Area A restore check failed\n");
             return EXIT_FAILURE;
@@ -386,7 +338,10 @@ int main(int argc, char *argv[]) {
         if (verify_bitmap(area, numberOfWrites, 4)) {
             return EXIT_FAILURE;
         }
-        restore_time += restore_area_test(area);
+        begin = clock();
+        _restore_area(area);
+        end = clock();
+        restore_time += (double)(end - begin) / CLOCKS_PER_SEC;
         if (memcmp((void *)area, (void *)(area + ALLOCATOR_AREA_SIZE),
                    ALLOCATOR_AREA_SIZE)) {
             fprintf(stderr, "Area A restore check failed\n");
@@ -409,7 +364,10 @@ int main(int argc, char *argv[]) {
         if (verify_bitmap_random(area, numberOfWrites)) {
             return EXIT_FAILURE;
         }
-        restore_time += restore_area_test(area);
+        begin = clock();
+        _restore_area(area);
+        end = clock();
+        restore_time += (double)(end - begin) / CLOCKS_PER_SEC;
         if (memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE)) {
             fprintf(stderr, "Area A restore check failed\n");
             return EXIT_FAILURE;

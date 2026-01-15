@@ -67,7 +67,6 @@ int fd;
 // user-defined instrumentation function
 void build_intermediate_representation(void) {
     int i;
-    int ret;
 
     patches = (patch *)
         address1; // always use this reference for accessing the patch area
@@ -507,8 +506,6 @@ int elf_parse(char **function_names, char *parsable_elf) {
     int j;
     int k;
     int num_functions;
-    int offset;
-    int len;
     FILE *the_file;
     char *guard;
     char *p;
@@ -548,8 +545,8 @@ int elf_parse(char **function_names, char *parsable_elf) {
     for (i = 0; i < num_functions; i++) { // parsing all the functions
         AUDIT
         printf("searching for function %s\n", function_names[i]);
-        offset = fseek(the_file, 0,
-                       SEEK_SET); // moving to the beginning of the ELF file
+        fseek(the_file, 0,
+              SEEK_SET); // moving to the beginning of the ELF file
         while (1) {
             guard = fgets(buffer, LINE_SIZE, the_file);
             if (guard == NULL) {
@@ -991,7 +988,6 @@ unsigned long find_elf_parse_compile_time_address(char *parsable_elf) {
 }
 
 void find_intermediate_zones(char *parsable_elf) {
-
     FILE *the_file;
     char *guard;
     unsigned long function_start_address;

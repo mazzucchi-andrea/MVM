@@ -78,12 +78,11 @@ char buffer[1024];
 // skipping the instrumentatn of this instruction
 
 void user_defined(instruction_record *actual_instruction, patch *actual_patch) {
-    int fd, ret, i;
+    int fd, ret;
 
     // here is stuff used for instrumenting applications in "PARSIR ubiquitous"
     // it replicates memory updates that are executed on malloc-ed/mmap-ed
     // memory areas at a given distance which is here set to 2^{21}
-    int offset = 0x200000;
     char *offset_string = "0x200000";
     char *aux;
 
