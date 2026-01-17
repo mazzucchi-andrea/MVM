@@ -342,8 +342,7 @@ int main(int argc, char *argv[]) {
         _restore_area(area);
         end = clock();
         restore_time += (double)(end - begin) / CLOCKS_PER_SEC;
-        if (memcmp((void *)area, (void *)(area + ALLOCATOR_AREA_SIZE),
-                   ALLOCATOR_AREA_SIZE)) {
+        if (memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE)) {
             fprintf(stderr, "Area A restore check failed\n");
             return EXIT_FAILURE;
         }
@@ -381,8 +380,7 @@ int main(int argc, char *argv[]) {
 
     test_fill_area(area, value_32bit, value_64bit);
     _restore_area(area);
-    if (memcmp((void *)area, (void *)(area + ALLOCATOR_AREA_SIZE),
-                 ALLOCATOR_AREA_SIZE)) {
+    if (memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE)) {
         fprintf(stderr, "Area A restore after fill test check failed\n");
         return EXIT_FAILURE;
     }
