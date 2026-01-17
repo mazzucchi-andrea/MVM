@@ -51,8 +51,10 @@ void _restore_area(uint8_t *area) {
                     *(uint64_t *)(dst + target_offset) =
                         *(uint64_t *)(src + target_offset);
 #elif MOD == 16
-                    *(__int128 *)(dst + target_offset) =
-                        *(__int128 *)(src + target_offset);
+                    __m128i ckpt_value =
+                        _mm_load_si128((__m128i *)(src + target_offset));
+                    _mm_store_si128((__m128i *)(dst + target_offset), ckpt_value);
+
 #elif MOD == 32
                     __m256i ckpt_value =
                         _mm256_load_si256((__m256i *)(src + target_offset));
@@ -65,7 +67,6 @@ void _restore_area(uint8_t *area) {
                                        ckpt_value);
 #else
                     memcpy(dst + target_offset, src + target_offset, MOD);
-                    printf("Check\n");
 #endif
                 }
             }
