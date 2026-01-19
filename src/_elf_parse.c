@@ -77,7 +77,9 @@ void build_intermediate_representation(void) {
         patches[i].functional_instr_size = 0;
 
         // just passing through user-defined stuff
-        // user_defined(&instructions[i], &patches[i]);
+#ifndef CKPT
+        user_defined(&instructions[i], &patches[i]);
+#endif
     }
 }
 
