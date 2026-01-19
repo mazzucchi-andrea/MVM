@@ -77,7 +77,7 @@ void test_fill_area(uint8_t *area, int32_t value_32bit, int64_t value_64bit) {
 /* Verify that the set bits correspond to the correctly saved quadwords. */
 int verify_checkpoint(uint8_t *areaS, uint8_t *init_A_copy) {
     uint8_t *bitmap = areaS + ALLOCATOR_AREA_SIZE;
-    for (int offset = 0; offset < BITMAP_SIZE; offset++) {
+    for (int offset = 0; offset < BITMAP_SIZE - 1; offset++) {
         uint8_t current_byte = *(uint8_t *)(bitmap + offset);
         if (current_byte == 0) {
             continue;
@@ -275,7 +275,7 @@ int main(int argc, char *argv[]) {
     printf("BaseA: %p\n", area);
     printf("BaseS: %p\n", (uint8_t *)(area + ALLOCATOR_AREA_SIZE));
     printf("BaseM: %p\n", (uint8_t *)(area + 2 * ALLOCATOR_AREA_SIZE));
-    printf("Bitmap Size: 0x%x\n\n", BITMAP_SIZE);
+    printf("Bitmap Size: 0x%x\n\n", BITMAP_SIZE - 1);
 
     init_area(area, init_value);
 

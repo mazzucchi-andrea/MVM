@@ -61,6 +61,8 @@ checks:
 
 	@if [ ! -d $(OBJ) ]; then mkdir -p $(OBJ); fi
 	@if [ ! -d $(LIB) ]; then mkdir -p $(LIB); fi
+	@if [ ! -d $(TEMP) ]; then mkdir -p $(TEMP); fi
+	@if [ ! -d $(TEMP)/$(SHADOW) ]; then mkdir -p $(TEMP)/$(SHADOW); fi
 
 base:
 	./scripts/temp-dir.sh $(TEMP) $(TEMP)/$(INTERMEDIATEFILE)

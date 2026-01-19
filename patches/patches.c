@@ -1,34 +1,34 @@
-#include <immintrin.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/mman.h>
 
 #include "elf_parse.h"
-
-#ifndef MOD
-#define MOD 8
-#endif
-
-#if MOD != 8 && MOD != 16 && MOD != 32 && MOD != 64
-#error "Valid MODs are 8, 16, 32, and 64."
-#endif
-
-#ifndef ALLOCATOR_AREA_SIZE
-#define ALLOCATOR_AREA_SIZE 0x100000
-#endif
-
-#define BITMAP_SIZE (ALLOCATOR_AREA_SIZE / MOD) / 8
-
-// CKPT ASM CODE
 
 #define LOG2_8 3
 #define LOG2_16 4
 #define LOG2_32 5
 #define LOG2_64 6
+#define LOG2_128 7
+#define LOG2_256 8
+#define LOG2_512 9
+#define LOG2_1024 10
+#define LOG2_2048 11
+#define LOG2_4096 12
+#define LOG2_8192 13
+#define LOG2_16384 14
+#define LOG2_32768 15
+#define LOG2_65536 16
 
 // Helper macro to concatenate and evaluate
 #define LOG2_EVAL(x) LOG2_##x
 #define LOG2(x) LOG2_EVAL(x)
+
+#ifndef MOD
+#define MOD 8
+#endif
+
+#ifndef ALLOCATOR_AREA_SIZE
+#define ALLOCATOR_AREA_SIZE 0x100000
+#endif
 
 void the_patch(unsigned long, unsigned long) __attribute__((used));
 
@@ -44,12 +44,11 @@ void the_patch(unsigned long mem, unsigned long regs) {
     instruction_record *instruction = (instruction_record *)mem;
     target_address *target;
     unsigned long A = 0, B = 0;
-    uint8_t *address, *base, *area_ckpt, *bitmap;
-    uint8_t bit;
-    uint16_t bitmask, word;
+    uint8_t *address, *base, *bitmap;
+    uint8_t bit, byte_bitmask;
+    uint16_t word_bitmask, word;
     uint16_t *word_ptr;
-    uint64_t offset;
-    uint64_t temp;
+    uint64_t offset, temp;
 
     // get the address
     if (instruction->effective_operand_address != 0x0) {
@@ -66,61 +65,25 @@ void the_patch(unsigned long mem, unsigned long regs) {
     }
 
     base = (uint8_t *)((uint64_t)address & (~(ALLOCATOR_AREA_SIZE - 1)));
-    area_ckpt = base + ALLOCATOR_AREA_SIZE;
     bitmap = base + 2 * ALLOCATOR_AREA_SIZE;
     offset = (uint64_t)address & (ALLOCATOR_AREA_SIZE - 1);
     if ((uint64_t)address & (MOD - 1)) {
         offset &= (ALLOCATOR_AREA_SIZE - MOD);
         // Process first qword
         temp = offset >> LOG2(MOD);
-        bit = temp & 15;
-        bitmask = 1 << bit;
-        word_ptr = (uint16_t *)(bitmap + (temp >> 4) * 2);
-        if (!(*word_ptr & bitmask)) {
-            *word_ptr |= bitmask;
-#if MOD == 8
-            *(uint64_t *)(area_ckpt + offset) = *(uint64_t *)(base + offset);
-#elif MOD == 16
-            __m128i ckpt_value = _mm_load_si128((__m128i *)(base + offset));
-            _mm_store_si128((__m128i *)(area_ckpt + offset), ckpt_value);
-#elif MOD == 32
-            __m256i ckpt_value = _mm256_load_si256((__m256i *)(base + offset));
-            _mm256_store_si256((__m256i *)(area_ckpt + offset), ckpt_value);
-#elif MOD == 64
-            __m512i ckpt_value = _mm512_load_si512((void *)(base + offset));
-            _mm512_store_si512((void *)(area_ckpt + offset), ckpt_value);
-#else
-            memcpy((void *)(base + offset), (void *)(area_ckpt + offset));
-#endif
-        }
-
-        // Process second qword only if within bounds
-        offset += MOD;
-        if (offset == ALLOCATOR_AREA_SIZE) {
-            return;
-        }
+        bit = temp & 7;
+        temp = temp >> 3;
+        word_bitmask = 3 << bit;
+        *(uint16_t *)(bitmap + temp) |= word_bitmask;
+        return;
     }
 
-    // Aligned case: process single qword
+    // Aligned case
     temp = offset >> LOG2(MOD);
-    bit = temp & 15;
-    bitmask = 1 << bit;
-    word_ptr = (uint16_t *)(bitmap + (temp >> 4) * 2);
-    if (!(*word_ptr & bitmask)) {
-        *word_ptr |= bitmask;
-#if MOD == 8
-        *(uint64_t *)(area_ckpt + offset) = *(uint64_t *)(base + offset);
-#elif MOD == 16
-        __m128i ckpt_value = _mm_load_si128((__m128i *)(base + offset));
-        _mm_store_si128((__m128i *)(area_ckpt + offset), ckpt_value);
-#elif MOD == 32
-        __m256i ckpt_value = _mm256_loadu_si256((__m256i *)(base + offset));
-        _mm256_storeu_si256((__m256i *)(area_ckpt + offset), ckpt_value);
-#else
-        __m512i ckpt_value = _mm512_load_si512((void *)(base + offset));
-        _mm512_storeu_si512((void *)(area_ckpt + offset), ckpt_value);
-#endif
-    }
+    bit = temp & 7;
+    temp = temp >> 3;
+    byte_bitmask = 1 << bit;
+    *(uint8_t *)(bitmap + temp) |= byte_bitmask;
 }
 
 // used_defined(...) is the real body of the user-defined instrumentation
