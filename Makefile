@@ -8,7 +8,7 @@ APP_OBJ = $(APP)/prog.o
 TARGET_MODULES= prog.c
 #TARGET_FUNCTIONS="<a>:","<b>:" this is an example usage
 TARGET_FUNCTIONS="<test_checkpoint>:","<test_checkpoint_random>:","<test_fill_area>:"
-LIBS =
+LIBS = -lm
 
 INCLUDE = $(PWD)/include
 OBJ = $(PWD)/obj

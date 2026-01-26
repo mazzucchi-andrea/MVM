@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <immintrin.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -239,6 +240,29 @@ void clean_cache(uint8_t *area) {
     }
 }
 
+void mean_ci_95(double *samples, double *mean, double *ci) {
+    double sum = 0.0;
+    for (int i = 0; i < 1000; i++) {
+
+        sum += samples[i];
+    }
+    *mean = sum / 1000;
+
+    double var = 0.0;
+    for (int i = 0; i < 1000; i++) {
+
+        double d = samples[i] - *mean;
+        var += d * d;
+    }
+
+    double sd = sqrt(var / (1000 - 1)); // sample SD
+    double sem = sd / sqrt(1000);       // standard error
+
+    const double t95 = 1.962;
+
+    *ci = t95 * sem;
+}
+
 /* Two parameters are needed to run the tests:
  * - numberOfWrites: the number of write operations to perform;
  * - numberOfReads: the number of read operations to perform;
@@ -246,7 +270,8 @@ void clean_cache(uint8_t *area) {
 int main(int argc, char *argv[]) {
     char *endptr;
     int numberOfWrites, numberOfReads;
-    double wr_time = 0.0, restore_time = 0.0;
+    double ckpt_samples[1000], restore_samples[1000];
+    double ckpt_mean, ckpt_ci, restore_mean, restore_ci;
     clock_t begin, end;
     int64_t init_value, value_64bit;
     int32_t value_32bit;
@@ -286,9 +311,9 @@ int main(int argc, char *argv[]) {
 
     unsigned long base_addr = 8UL * 1024UL * ALLOCATOR_AREA_SIZE;
     size_t size = 2UL * ALLOCATOR_AREA_SIZE + BITMAP_SIZE;
-    uint8_t *area =
-        (uint8_t *)mmap((void *)base_addr, size, PROT_READ | PROT_WRITE,
-                        MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, 0, 0);
+    uint8_t *area = (uint8_t *)mmap(
+        (void *)base_addr, size, PROT_READ | PROT_WRITE,
+        MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
     if (area == MAP_FAILED) {
         perror("mmap failed");
         return errno;
@@ -307,74 +332,79 @@ int main(int argc, char *argv[]) {
            ALLOCATOR_AREA_SIZE);
 
     printf("Test Checkpoint with aligned writes and read\n");
-    for (int i = 0; i < 256; i++) {
-        wr_time += test_checkpoint(area, value_64bit, numberOfWrites,
-                                   numberOfReads, MOD);
+    for (int i = 0; i < 1000; i++) {
+        ckpt_samples[i] = test_checkpoint(area, value_64bit, numberOfWrites,
+                                          numberOfReads, MOD);
         if (verify_bitmap(area, numberOfWrites, MOD)) {
             return EXIT_FAILURE;
         }
         begin = clock();
         _restore_area(area);
         end = clock();
-        restore_time += (double)(end - begin) / CLOCKS_PER_SEC;
+        restore_samples[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         if (memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE)) {
             fprintf(stderr, "Area A restore check failed\n");
             return EXIT_FAILURE;
         }
     }
-    printf("Time spent by %d writes and %d reads: %f s\n", numberOfWrites,
-           numberOfReads, wr_time / 256);
-    printf("Time spent by restore: %f s\n\n", restore_time / 256);
+    mean_ci_95(ckpt_samples, &ckpt_mean, &ckpt_ci);
+    mean_ci_95(restore_samples, &restore_mean, &restore_ci);
+    printf("Time spent by %d writes and %d reads: %f +/- %f s\n",
+           numberOfWrites, numberOfReads, ckpt_mean, ckpt_ci / 2);
+    printf("Time spent by restore: %f +/- %f s\n\n", restore_mean,
+           restore_ci / 2);
 
-    wr_time = 0;
-    restore_time = 0;
     clean_cache(area);
 
     printf("Test Checkpoint with not aligned writes and reads\n");
 
-    for (int i = 0; i < 256; i++) {
-        wr_time += test_checkpoint(area, value_64bit, numberOfWrites,
-                                   numberOfReads, 4);
+    for (int i = 0; i < 1000; i++) {
+        ckpt_samples[i] = test_checkpoint(area, value_64bit, numberOfWrites,
+                                          numberOfReads, 4);
         if (verify_bitmap(area, numberOfWrites, 4)) {
             return EXIT_FAILURE;
         }
         begin = clock();
         _restore_area(area);
         end = clock();
-        restore_time += (double)(end - begin) / CLOCKS_PER_SEC;
+        restore_samples[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         if (memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE)) {
             fprintf(stderr, "Area A restore check failed\n");
             return EXIT_FAILURE;
         }
     }
-    printf("Time spent by %d writes and %d reads: %f s\n", numberOfWrites,
-           numberOfReads, wr_time / 256);
-    printf("Time spent by restore: %f s\n\n", restore_time / 256);
+    mean_ci_95(ckpt_samples, &ckpt_mean, &ckpt_ci);
+    mean_ci_95(restore_samples, &restore_mean, &restore_ci);
+    printf("Time spent by %d writes and %d reads: %f +/- %f s\n",
+           numberOfWrites, numberOfReads, ckpt_mean, ckpt_ci / 2);
+    printf("Time spent by restore: %f +/- %f s\n\n", restore_mean,
+           restore_ci / 2);
 
-    wr_time = 0;
-    restore_time = 0;
     clean_cache(area);
 
     printf("Test Checkpoint with random writes and reads\n");
 
-    for (int i = 0; i < 256; i++) {
-        wr_time += test_checkpoint_random(area, value_64bit, numberOfWrites,
-                                          numberOfReads);
+    for (int i = 0; i < 1000; i++) {
+        ckpt_samples[i] = test_checkpoint_random(area, value_64bit,
+                                                 numberOfWrites, numberOfReads);
         if (verify_bitmap_random(area, numberOfWrites)) {
             return EXIT_FAILURE;
         }
         begin = clock();
         _restore_area(area);
         end = clock();
-        restore_time += (double)(end - begin) / CLOCKS_PER_SEC;
+        restore_samples[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         if (memcmp(area, area + ALLOCATOR_AREA_SIZE, ALLOCATOR_AREA_SIZE)) {
             fprintf(stderr, "Area A restore check failed\n");
             return EXIT_FAILURE;
         }
     }
-    printf("Time spent by %d writes and %d reads: %f s\n", numberOfWrites,
-           numberOfReads, wr_time / 256);
-    printf("Time spent by restore: %f s\n\n", restore_time / 256);
+    mean_ci_95(ckpt_samples, &ckpt_mean, &ckpt_ci);
+    mean_ci_95(restore_samples, &restore_mean, &restore_ci);
+    printf("Time spent by %d writes and %d reads: %f +/- %f s\n",
+           numberOfWrites, numberOfReads, ckpt_mean, ckpt_ci / 2);
+    printf("Time spent by restore: %f +/- %f s\n\n", restore_mean,
+           restore_ci / 2);
 
     clean_cache(area);
 

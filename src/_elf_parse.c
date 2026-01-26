@@ -108,14 +108,16 @@ void build_patches(void) {
     int i, pos;
     int jmp_displacement, jmp_back_displacement;
     uint64_t instruction_address;
-    uint64_t patch_address;
+    __attribute__((unused)) uint64_t patch_address;
     uint64_t effective_operand_address;
     uint64_t effective_operand_displacement;
     uint64_t intermediate_target;
 
+#ifdef ASM_PREAMBLE
     uint64_t test_code = (uint64_t)the_patch_assembly;
     int test_code_size = 0x52; // this is taken from the compiled version of the
                                // src/_asm_patch.S file
+#endif
 
 #if CKPT
     uint64_t ckpt_code = (uint64_t)ckpt_assembly;
@@ -365,12 +367,11 @@ void build_patches(void) {
 }
 
 void apply_patches(void) {
-
     int i;
     unsigned long size;
     unsigned long instruction_address;
     unsigned long instruction_patch;
-    unsigned short instruction_short_patch;
+    __attribute__((unused)) unsigned short instruction_short_patch;
 
     for (i = 0; i < target_instructions; i++) {
 #if CKPT
@@ -949,7 +950,7 @@ unsigned long find_elf_parse_compile_time_address(char *parsable_elf) {
     FILE *the_file;
     char *guard;
     unsigned long function_start_address;
-    long corrector;
+    __attribute__((unused)) long corrector;
 
     AUDIT
     printf("finding elf_parse compile time address\n");
@@ -990,8 +991,8 @@ unsigned long find_elf_parse_compile_time_address(char *parsable_elf) {
 void find_intermediate_zones(char *parsable_elf) {
     FILE *the_file;
     char *guard;
-    unsigned long function_start_address;
-    long corrector;
+    __attribute__((unused)) unsigned long function_start_address;
+    __attribute__((unused)) long corrector;
 
     AUDIT
     printf("finding intermediate zones\n");

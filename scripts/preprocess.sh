@@ -43,14 +43,12 @@ def instrument_c_code(filename):
         # ---------- SINGLE LINE COMMENT ----------
         if COMMENT_RE.match(line):
             out.append(line)
-
             i += 1
             continue
 
         # ---------- PREPROCESSOR ----------
         if stripped.startswith("#define") or stripped.startswith("#include"):
             out.append(line)
-
             i += 1
             continue
 
@@ -63,6 +61,7 @@ def instrument_c_code(filename):
 
         # ---------- IF / FOR / WHILE ----------
         if IF_FOR_WHILE_RE.match(stripped):
+            macro_inserted = False
             if "{" in stripped:
                 out.append(line)
                 insert(indent + INDENT_STEP)
@@ -83,6 +82,7 @@ def instrument_c_code(filename):
 
         # ---------- ELSE ----------
         if ELSE_RE.match(stripped):
+            macro_inserted = False
             if "{" in stripped:
                 out.append(line)
                 insert(indent + INDENT_STEP)
@@ -105,7 +105,7 @@ def instrument_c_code(filename):
             continue
 
         # ---------- PRINTF / MALLOC ----------
-        if re.search(r"\b(printf|malloc|memcpy|fprintf|free)\s*\(", line):
+        if re.search(r"\b(fprintf|printf|malloc|memcpy)\s*\(", line):
             insert(indent)
             out.append(line)
 
@@ -121,8 +121,6 @@ def instrument_c_code(filename):
             continue
 
         out.append(line)
-        macro_inserted = False
-
         i += 1
 
     return "".join(out)

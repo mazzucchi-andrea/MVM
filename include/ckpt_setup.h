@@ -11,7 +11,8 @@
 #define ALLOCATOR_AREA_SIZE 0x100000
 #endif
 
-#define BITMAP_SIZE (ALLOCATOR_AREA_SIZE / MOD) / 8 + 1
+#define _BITMAP_SIZE (ALLOCATOR_AREA_SIZE / MOD) / 8
+#define BITMAP_SIZE _BITMAP_SIZE + 1
 
 void _tls_setup();
 

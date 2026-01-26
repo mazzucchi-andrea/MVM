@@ -25,7 +25,7 @@ void _tls_setup() {
 
 void _set_ckpt(uint8_t *area) {
     memcpy(area + ALLOCATOR_AREA_SIZE, area, ALLOCATOR_AREA_SIZE);
-    memset(area + 2 * ALLOCATOR_AREA_SIZE, 0, BITMAP_SIZE - 1);
+    memset(area + 2 * ALLOCATOR_AREA_SIZE, 0, _BITMAP_SIZE);
 }
 
 void _restore_area(uint8_t *area) {
@@ -35,7 +35,7 @@ void _restore_area(uint8_t *area) {
     uint16_t current_word;
     int target_offset;
 
-    for (int offset = 0; offset < BITMAP_SIZE - 1; offset += 8) {
+    for (int offset = 0; offset < _BITMAP_SIZE; offset += 8) {
         if (*(uint64_t *)(bitmap + offset) == 0) {
             continue;
         }
@@ -53,7 +53,8 @@ void _restore_area(uint8_t *area) {
 #elif MOD == 16
                     __m128i ckpt_value =
                         _mm_load_si128((__m128i *)(src + target_offset));
-                    _mm_store_si128((__m128i *)(dst + target_offset), ckpt_value);
+                    _mm_store_si128((__m128i *)(dst + target_offset),
+                                    ckpt_value);
 
 #elif MOD == 32
                     __m256i ckpt_value =
@@ -72,5 +73,5 @@ void _restore_area(uint8_t *area) {
             }
         }
     }
-    memset(bitmap, 0, BITMAP_SIZE - 1);
+    memset(bitmap, 0, _BITMAP_SIZE);
 }
