@@ -7,6 +7,14 @@
 #define MOD 8
 #endif
 
+#if MOD < 8
+#error "MOD must be equal or greater than 8"
+#endif
+
+#if (MOD & MOD - 1)
+#error "MOD must be a power of 2"
+#endif
+
 #ifndef ALLOCATOR_AREA_SIZE
 #define ALLOCATOR_AREA_SIZE 0x100000
 #endif

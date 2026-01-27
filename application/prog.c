@@ -1,3 +1,4 @@
+#include <emmintrin.h>
 #include <errno.h>
 #include <immintrin.h>
 #include <math.h>
@@ -10,9 +11,6 @@
 
 #include "ckpt_setup.h"
 
-#define LOG2_1 0
-#define LOG2_2 1
-#define LOG2_4 2
 #define LOG2_8 3
 #define LOG2_16 4
 #define LOG2_32 5
@@ -34,24 +32,27 @@
 
 /* Initialize the area with the given quadword */
 void init_area(uint8_t *area, int64_t init_value) {
-    for (int i = 0; i < (ALLOCATOR_AREA_SIZE); i += 8) {
+    for (int i = 0; i < ALLOCATOR_AREA_SIZE; i += 8) {
+
         *(int64_t *)(area + i) = init_value;
     }
 }
 
 double test_checkpoint(uint8_t *area, int64_t new_value, int numberOfWrites,
                        int numberOfReads, int offset_increment) {
-    int offset = 0;
+    int offset;
     __attribute__((unused)) int64_t read_value;
     clock_t begin, end;
 
     begin = clock();
     _set_ckpt(area);
+    offset = 0;
     for (int i = 0; i < numberOfWrites; i++) {
         offset %= (ALLOCATOR_AREA_SIZE - 8);
         *(int64_t *)(area + offset) = new_value;
         offset += offset_increment;
     }
+    offset = 0;
     for (int i = 0; i < numberOfReads; i++) {
         offset %= (ALLOCATOR_AREA_SIZE - 8);
         read_value = *(int64_t *)(area + offset);
@@ -173,19 +174,20 @@ int verify_bitmap_random(uint8_t *area, int numberOfWrites) {
     return 0;
 }
 
-int verify_restored_area(uint8_t *area) {
+void verify_restored_area(uint8_t *area) {
     uint8_t *area_copy = area + ALLOCATOR_AREA_SIZE;
     for (int offset = 0; offset < ALLOCATOR_AREA_SIZE; offset += MOD) {
 #if MOD == 8
-        if (*(int64_t *)(area + offset) != *(int64_t *)(area_copy + offset)) {
+        if (*(uint64_t *)(area + offset) != *(uint64_t *)(area_copy + offset)) {
+
             fprintf(stderr,
                     "Checkpoint verify failed:\n"
-                    "Offeset 0x%x\n"
-                    "Area S value: 0x%lx\n"
-                    "Area A Value: 0x%lx\n",
+                    "Offset 0x%x\n"
+                    "Area A value: 0x%lx\n"
+                    "Area S Value: 0x%lx\n",
                     offset, *(int64_t *)(area + offset),
                     *(int64_t *)(area_copy + offset));
-            return -1;
+            exit(EXIT_FAILURE);
         }
 #elif MOD == 16
         if (memcmp(area + offset, area_copy + offset, 16)) {
@@ -198,7 +200,7 @@ int verify_restored_area(uint8_t *area) {
                     *(int64_t *)(area + offset + 8),
                     *(int64_t *)(area_copy + offset),
                     *(int64_t *)(area_copy + offset + 8));
-            return -1;
+            exit(EXIT_FAILURE);
         }
 #elif MOD == 32
         if (memcmp(area + offset, area_copy + offset, 32)) {
@@ -217,19 +219,19 @@ int verify_restored_area(uint8_t *area) {
                     *(int64_t *)(area_copy + offset + 8),
                     *(int64_t *)(area_copy + offset + 16),
                     *(int64_t *)(area_copy + offset + 24));
-            return -1;
+            exit(EXIT_FAILURE);
         }
 #else
-        if (memcmp(area + offset, area_copy + offset, 64)) {
+        if (memcmp(area + offset, area_copy + offset, MOD)) {
+
             fprintf(stderr,
                     "Checkpoint verify failed:\n"
                     "Offset: %d\n",
                     offset);
-            return -1;
+            exit(EXIT_FAILURE);
         }
 #endif
     }
-    return 0;
 }
 
 void clean_cache(uint8_t *area) {
@@ -243,14 +245,12 @@ void clean_cache(uint8_t *area) {
 void mean_ci_95(double *samples, double *mean, double *ci) {
     double sum = 0.0;
     for (int i = 0; i < 1000; i++) {
-
         sum += samples[i];
     }
     *mean = sum / 1000;
 
     double var = 0.0;
     for (int i = 0; i < 1000; i++) {
-
         double d = samples[i] - *mean;
         var += d * d;
     }
@@ -302,9 +302,9 @@ int main(int argc, char *argv[]) {
     _tls_setup();
 
     srand(42);
-    init_value = rand() % INT64_MAX;
-    value_64bit = rand() % INT64_MAX;
-    value_32bit = rand() % INT32_MAX;
+    init_value = rand() % UINT64_MAX;
+    value_64bit = rand() % UINT64_MAX;
+    value_32bit = rand() % UINT32_MAX;
 
     printf("Initial Value\t0x%lx\n", init_value);
     printf("New Value\t0x%lx\n\n", value_64bit);
@@ -322,7 +322,7 @@ int main(int argc, char *argv[]) {
     printf("BaseA: %p\n", area);
     printf("BaseS: %p\n", (uint8_t *)(area + ALLOCATOR_AREA_SIZE));
     printf("BaseM: %p\n", (uint8_t *)(area + 2 * ALLOCATOR_AREA_SIZE));
-    printf("bitmap Size: 0x%x\n\n", BITMAP_SIZE);
+    printf("Bitmap Size: 0x%x\n\n", BITMAP_SIZE);
 
     init_area(area, init_value);
 

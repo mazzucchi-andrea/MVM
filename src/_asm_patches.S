@@ -45,9 +45,6 @@ the_patch_assembly:
 	lea 0x1000(%rsp),%rsp
 
 // CKPT ASM CODE
-#define LOG2_1 0
-#define LOG2_2 1
-#define LOG2_4 2
 #define LOG2_8 3
 #define LOG2_16 4
 #define LOG2_32 5

@@ -1,10 +1,17 @@
 #include <asm/prctl.h>
-#include <immintrin.h> // AVX
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+
+#if SSE2
+#include <emmintrin.h>
+#endif
+
+#if AVX || AVX512
+#include <immintrin.h>
+#endif
 
 #include "ckpt_setup.h"
 
@@ -50,18 +57,17 @@ void _restore_area(uint8_t *area) {
 #if MOD == 8
                     *(uint64_t *)(dst + target_offset) =
                         *(uint64_t *)(src + target_offset);
-#elif MOD == 16
+#elif MOD == 16 && SSE2
                     __m128i ckpt_value =
                         _mm_load_si128((__m128i *)(src + target_offset));
                     _mm_store_si128((__m128i *)(dst + target_offset),
                                     ckpt_value);
-
-#elif MOD == 32
+#elif MOD == 32 && AVX
                     __m256i ckpt_value =
                         _mm256_load_si256((__m256i *)(src + target_offset));
                     _mm256_store_si256((__m256i *)(dst + target_offset),
                                        ckpt_value);
-#elif MOD == 64
+#elif MOD == 64 && AVX512
                     __m512i ckpt_value =
                         _mm512_load_si512((void *)(src + target_offset));
                     _mm512_store_si512((void *)(dst + target_offset),
