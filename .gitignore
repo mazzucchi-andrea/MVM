@@ -61,4 +61,5 @@ dkms.conf
 # python venv
 *.venv
 
-/MVM/application/prog
+application/prog
+temp/
